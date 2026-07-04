@@ -1,0 +1,23 @@
+# Build output
+build/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# VS Code
+.vscode/
+
+# Object files
+*.o
+
+# Static libraries
+*.a
+
+# Shared libraries
+*.so
+
+# Executables
+OpenTAS64
