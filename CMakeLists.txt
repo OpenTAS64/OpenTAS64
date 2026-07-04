@@ -6,7 +6,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+find_package(SDL2 REQUIRED)
+
 add_executable(OpenTAS64
     src/main.cpp
     src/App.cpp
 )
+
+target_link_libraries(OpenTAS64 PRIVATE SDL2::SDL2)

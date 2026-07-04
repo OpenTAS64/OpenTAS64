@@ -3,7 +3,10 @@
 class App
 {
 public:
-    void Init();
-    void Render();
+    bool Init();
+    void Run();
     void Shutdown();
+
+private:
+    bool running = true;
 };

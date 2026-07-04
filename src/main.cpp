@@ -4,12 +4,10 @@ int main()
 {
     App app;
 
-    app.Init();
+    if (!app.Init())
+        return 1;
 
-    while (true)
-    {
-    app.Render();
-    }
+    app.Run();
 
     app.Shutdown();
 
