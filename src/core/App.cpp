@@ -3,6 +3,10 @@
 #include <SDL2/SDL.h>
 #include <iostream>
 
+#include "imgui.h"
+#include "backends/imgui_impl_sdl2.h"
+#include "backends/imgui_impl_sdlrenderer2.h"
+
 bool App::Init()
 {
     if (SDL_Init(SDL_INIT_VIDEO) != 0)
@@ -38,6 +42,18 @@ bool App::Init()
         return false;
     }
 
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+
+    ImGuiIO& io = ImGui::GetIO();
+    (void)io;
+
+    ImGui::StyleColorsDark();
+
+    ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
+    ImGui_ImplSDLRenderer2_Init(renderer);
+
     return true;
 }
 
@@ -62,6 +78,14 @@ void App::HandleEvents()
             running = false;
         }
     }
+
+    while (SDL_PollEvent(&event))
+    {
+    ImGui_ImplSDL2_ProcessEvent(&event);
+
+    if (event.type == SDL_QUIT)
+        running = false;
+    }
 }
 
 void App::Update()
@@ -74,15 +98,32 @@ void App::Update()
 void App::Render()
 {
     SDL_SetRenderDrawColor(renderer, 30, 30, 30, 255);
-    SDL_RenderClear(renderer);
+SDL_RenderClear(renderer);
 
-    // ImGui kommt hier im nächsten Schritt hin
+ImGui_ImplSDLRenderer2_NewFrame();
+ImGui_ImplSDL2_NewFrame();
 
-    SDL_RenderPresent(renderer);
+ImGui::NewFrame();
+
+bool show_demo = true;
+ImGui::ShowDemoWindow(&show_demo);
+
+ImGui::Render();
+
+ImGui_ImplSDLRenderer2_RenderDrawData(
+    ImGui::GetDrawData(),
+    renderer
+);
+
+SDL_RenderPresent(renderer);
 }
 
 void App::Shutdown()
 {
+    ImGui_ImplSDLRenderer2_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
+    
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
