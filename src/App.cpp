@@ -32,20 +32,37 @@ bool App::Init()
 
 void App::Run()
 {
-    SDL_Event event;
-
     while (running)
     {
-        while (SDL_PollEvent(&event))
-        {
-            if (event.type == SDL_QUIT)
-            {
-                running = false;
-            }
-        }
-
-        SDL_Delay(16);
+        HandleEvents();
+        Update();
+        Render();
     }
+}
+
+void App::HandleEvents()
+{
+    SDL_Event event;
+
+    while (SDL_PollEvent(&event))
+    {
+        if (event.type == SDL_QUIT)
+        {
+            running = false;
+        }
+    }
+}
+
+void App::Update()
+{
+    // Später:
+    // Emulator aktualisieren
+    // Controller lesen
+}
+
+void App::Render()
+{
+    SDL_Delay(16);
 }
 
 void App::Shutdown()

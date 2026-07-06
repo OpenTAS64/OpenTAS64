@@ -9,4 +9,7 @@ public:
 
 private:
     bool running = true;
+    void HandleEvents();
+    void Update();
+    void Render();
 };
