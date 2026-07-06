@@ -10,7 +10,29 @@ find_package(SDL2 REQUIRED)
 
 add_executable(OpenTAS64
     src/main.cpp
-    src/App.cpp
+    src/core/App.cpp
+
+    third_party/imgui/imgui.cpp
+    third_party/imgui/imgui_draw.cpp
+    third_party/imgui/imgui_tables.cpp
+    third_party/imgui/imgui_widgets.cpp
+    third_party/imgui/imgui_demo.cpp
+
+    third_party/imgui/backends/imgui_impl_sdl2.cpp
+    third_party/imgui/backends/imgui_impl_sdlrenderer2.cpp
 )
 
-target_link_libraries(OpenTAS64 PRIVATE SDL2::SDL2)
+target_include_directories(OpenTAS64 PRIVATE
+    third_party/imgui
+    third_party/imgui/backends
+)
+
+target_link_libraries(OpenTAS64 PRIVATE
+    SDL2::SDL2
+)
+
+target_include_directories(OpenTAS64 PRIVATE
+    src
+    third_party/imgui
+    third_party/imgui/backends
+)
