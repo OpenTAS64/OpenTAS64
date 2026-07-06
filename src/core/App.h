@@ -1,5 +1,7 @@
 #pragma once
 
+#include <SDL2/SDL.h>
+
 class App
 {
 public:
@@ -8,8 +10,12 @@ public:
     void Shutdown();
 
 private:
-    bool running = true;
     void HandleEvents();
     void Update();
     void Render();
+
+    SDL_Window* window = nullptr;
+    SDL_Renderer* renderer = nullptr;
+
+    bool running = true;
 };
