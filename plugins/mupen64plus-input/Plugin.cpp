@@ -282,3 +282,9 @@ void OT64_CALL ControllerCommand(int, unsigned char*) {}
 void OT64_CALL ReadController(int, unsigned char*) {}
 int OT64_CALL RomOpen() { ResetControllers(); ResetFrameQueue(); return 1; }
 void OT64_CALL RomClosed() { ResetControllers(); ResetFrameQueue(); }
+
+// Required by the Mupen64Plus v2 input-plugin ABI. This network-driven
+// plugin does not consume SDL keyboard events, but the core requires both
+// callback symbols to be present when attaching an input plugin.
+void OT64_CALL SDL_KeyDown(int, int) {}
+void OT64_CALL SDL_KeyUp(int, int) {}

@@ -41,3 +41,5 @@ OT64_EXPORT void OT64_CALL ControllerCommand(int, unsigned char*);
 OT64_EXPORT void OT64_CALL ReadController(int, unsigned char*);
 OT64_EXPORT int OT64_CALL RomOpen();
 OT64_EXPORT void OT64_CALL RomClosed();
+OT64_EXPORT void OT64_CALL SDL_KeyDown(int, int);
+OT64_EXPORT void OT64_CALL SDL_KeyUp(int, int);
