@@ -17,6 +17,8 @@ public:
     InputFrame& GetFrame(std::size_t frame);
     const InputFrame& GetFrame(std::size_t frame) const;
     void Clear();
+    bool SaveToFile(const std::string& path, std::string* error = nullptr) const;
+    bool LoadFromFile(const std::string& path, std::string* error = nullptr);
 private:
     std::string name;
     std::vector<InputFrame> frames;
