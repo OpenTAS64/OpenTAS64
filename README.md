@@ -4,7 +4,7 @@
 
 OpenTAS64 is a standalone application for creating, editing, and analyzing Nintendo 64 Tool-Assisted Speedruns (TAS). It is designed to connect to existing emulators rather than replace them.
 
-> **🚧 Status:** Early development — the offline TAS input editor is the first functional application feature.
+> **🚧 Status:** Early development — offline project editing and native project files are implemented.
 
 ## Implemented
 
@@ -12,9 +12,18 @@ OpenTAS64 is a standalone application for creating, editing, and analyzing Ninte
 - Emulator-independent controller and input-frame data model
 - Offline editor for N64 buttons and analog stick X/Y
 - Frame timeline with frame selection, insertion, and deletion
-- New-project reset
+- Native `.otas` project save/load
+- Versioned project format with backward compatibility for version 1 files
+- Project file validation and preservation of the current project on failed loads
+- CTest unit tests for project editing and serialization
 
-Projects currently exist in memory only. Saving/loading, movie conversion, and emulator communication are not implemented. The connection panel is intentionally unavailable until an emulator adapter exists.
+Projects can be edited and saved without an emulator. Emulator communication and movie conversion are not implemented yet; the connection panel remains unavailable until an adapter exists.
+
+## Saving and loading projects
+
+Open the **Project** panel, enter a path ending in `.otas`, and use **Save** or **Load**. The File menu also provides New, Save, and Load actions. Press **Ctrl+S** to save the current project.
+
+The native format is documented in [docs/PROJECT_FORMAT.md](docs/PROJECT_FORMAT.md).
 
 ## Feature status
 
@@ -22,6 +31,8 @@ Projects currently exist in memory only. Saving/loading, movie conversion, and e
 |---|:---:|
 | Offline Input Editor | ✅ Implemented |
 | Frame Timeline | ✅ Implemented |
+| Native Project Save / Load | ✅ Implemented |
+| Versioned Project Format | ✅ Implemented |
 | Piano Roll | ⏳ Planned |
 | Frame Advance | ⏳ Planned |
 | Emulator Connection | ⏳ Planned |
@@ -42,6 +53,7 @@ Projects currently exist in memory only. Saving/loading, movie conversion, and e
 git submodule update --init --recursive
 cmake -S . -B build
 cmake --build build --config Release
+ctest --test-dir build --output-on-failure
 ```
 
 ## Emulator support
@@ -50,13 +62,12 @@ Mupen64Plus is the first planned integration. No emulator is currently connected
 
 ## Roadmap
 
-- **0.2:** Offline TAS data model, input editor, and timeline
 - **0.3:** Piano-roll view and movie playback controls
 - **0.4:** RAM watch, RAM search, and hex viewer
 - **0.5:** Lua scripting and overlay support
-- **1.0:** Stable release, project/movie formats, documentation, and plugin API
+- **1.0:** Stable release, emulator integrations, documentation, and plugin API
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for module boundaries and the planned integration design.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for module boundaries and [docs/PROJECT_FORMAT.md](docs/PROJECT_FORMAT.md) for the native file format.
 
 ## Contributing
 
