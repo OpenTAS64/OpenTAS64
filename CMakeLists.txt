@@ -27,6 +27,10 @@ target_include_directories(OpenTAS64 PRIVATE
     third_party/imgui
     third_party/imgui/backends
 )
+if(TARGET SDL2::SDL2main)
+    target_link_libraries(OpenTAS64 PRIVATE SDL2::SDL2main)
+endif()
+
 target_link_libraries(OpenTAS64 PRIVATE SDL2::SDL2)
 
 if(WIN32)
