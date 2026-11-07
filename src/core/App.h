@@ -1,5 +1,6 @@
 #pragma once
 #include <SDL2/SDL.h>
+#include <string>
 #include "tas/TasProject.h"
 class App {
 public:
@@ -15,5 +16,8 @@ private:
     SDL_Window* window=nullptr;
     SDL_Renderer* renderer=nullptr;
     TasProject project;
+    char projectPath[256]="project.otas";
+    std::string fileStatus;
+    bool fileStatusOk=false;
     bool running=true;
 };
