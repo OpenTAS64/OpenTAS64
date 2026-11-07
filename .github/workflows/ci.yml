@@ -7,19 +7,57 @@ on:
   workflow_dispatch:
 
 jobs:
-  linux:
-    runs-on: ubuntu-latest
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x86_64
+            os: ubuntu-latest
+            architecture: x64
+            sdl: linux
+          - name: Linux ARM64 (aarch64)
+            os: ubuntu-24.04-arm
+            architecture: arm64
+            sdl: linux
+          - name: Windows x64
+            os: windows-latest
+            architecture: x64
+            sdl: windows
+
+    runs-on: ${{ matrix.os }}
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository and submodules
+        uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: Install SDL2
+
+      - name: Install SDL2 (Linux)
+        if: matrix.sdl == 'linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libsdl2-dev
-      - name: Configure
+
+      - name: Install SDL2 (Windows)
+        if: matrix.sdl == 'windows'
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install sdl2:x64-windows
+
+      - name: Configure (Linux)
+        if: matrix.sdl == 'linux'
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+
+      - name: Configure (Windows)
+        if: matrix.sdl == 'windows'
+        shell: pwsh
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+
       - name: Build all targets
-        run: cmake --build build --parallel 2
+        run: cmake --build build --config Release --parallel 2
+
       - name: Run tests
-        run: ctest --test-dir build --output-on-failure
+        run: ctest --test-dir build -C Release --output-on-failure
