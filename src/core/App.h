@@ -1,21 +1,19 @@
 #pragma once
-
 #include <SDL2/SDL.h>
-
-class App
-{
+#include "tas/TasProject.h"
+class App {
 public:
     bool Init();
     void Run();
     void Shutdown();
-
 private:
     void HandleEvents();
     void Update();
     void Render();
-
-    SDL_Window* window = nullptr;
-    SDL_Renderer* renderer = nullptr;
-
-    bool running = true;
+    void RenderInputEditor();
+    void RenderTimeline();
+    SDL_Window* window=nullptr;
+    SDL_Renderer* renderer=nullptr;
+    TasProject project;
+    bool running=true;
 };
