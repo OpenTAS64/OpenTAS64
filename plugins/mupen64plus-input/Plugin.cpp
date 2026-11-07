@@ -42,6 +42,7 @@ struct ControllerState {
 std::array<ControllerState, 4> gControllers;
 std::atomic<bool> gRunning{false};
 std::thread gServerThread;
+std::atomic<Socket> gActiveClient{kInvalidSocket};
 void* gDebugContext = nullptr;
 void (*gDebugCallback)(void*, int, const char*) = nullptr;
 
@@ -73,6 +74,7 @@ void ResetControllers() {
 }
 
 void HandleClient(Socket client) {
+    gActiveClient.store(client);
     std::uint8_t packet[kPacketSize]{};
     while (gRunning.load() && ReceiveExact(client, packet, sizeof(packet))) {
         if (std::memcmp(packet, "OT64", 4) != 0 || packet[4] != 1 || packet[5] > 3)
@@ -85,6 +87,7 @@ void HandleClient(Socket client) {
         gControllers[port].stickY.store(static_cast<std::int8_t>(packet[9]));
     }
     ResetControllers();
+    gActiveClient.store(kInvalidSocket);
 }
 
 void ServerLoop() {
@@ -150,9 +153,14 @@ void ServerLoop() {
 }
 
 void StopServer() {
-    if (!gRunning.exchange(false)) {
-        if (gServerThread.joinable()) gServerThread.join();
-        return;
+    gRunning.store(false);
+    const Socket client = gActiveClient.load();
+    if (client != kInvalidSocket) {
+#if defined(_WIN32)
+        shutdown(client, SD_BOTH);
+#else
+        shutdown(client, SHUT_RDWR);
+#endif
     }
     if (gServerThread.joinable()) gServerThread.join();
     ResetControllers();
@@ -166,6 +174,7 @@ m64p_error OT64_CALL PluginStartup(m64p_dynlib_handle, void* context,
     WSADATA data{};
     if (WSAStartup(MAKEWORD(2, 2), &data) != 0) return M64ERR_SYSTEM_FAIL;
 #endif
+    if (gServerThread.joinable()) gServerThread.join();
     gDebugContext = context;
     gDebugCallback = debugCallback;
     gRunning.store(true);
