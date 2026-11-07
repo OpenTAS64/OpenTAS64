@@ -1,6 +1,11 @@
 #include "TasProject.h"
 #include <algorithm>
+#include <cstdint>
+#include <fstream>
+#include <iomanip>
+#include <limits>
 #include <utility>
+
 TasProject::TasProject(std::string value):name(std::move(value)),frames(1){}
 const std::string& TasProject::GetName() const{return name;}
 void TasProject::SetName(const std::string& value){name=value;}
@@ -24,3 +29,63 @@ bool TasProject::DeleteFrame(std::size_t frame){
 InputFrame& TasProject::GetFrame(std::size_t frame){EnsureFrame(frame);return frames[frame];}
 const InputFrame& TasProject::GetFrame(std::size_t frame) const{return frames.at(frame);}
 void TasProject::Clear(){frames.assign(1,InputFrame{});selectedFrame=0;}
+
+bool TasProject::SaveToFile(const std::string& path, std::string* error) const {
+    std::ofstream out(path, std::ios::out | std::ios::trunc);
+    if (!out) { if(error)*error="Could not open file for writing."; return false; }
+    out << "OPENTAS64_PROJECT 1\n" << std::quoted(name) << '\n' << frames.size() << '\n';
+    for (const auto& frame : frames) {
+        const auto& c=frame.controller;
+        out << c.a << ' ' << c.b << ' ' << c.z << ' ' << c.start << ' '
+            << c.dUp << ' ' << c.dDown << ' ' << c.dLeft << ' ' << c.dRight << ' '
+            << c.l << ' ' << c.r << ' ' << c.cUp << ' ' << c.cDown << ' '
+            << c.cLeft << ' ' << c.cRight << ' '
+            << static_cast<int>(c.stickX) << ' ' << static_cast<int>(c.stickY) << '\n';
+    }
+    if (!out) { if(error)*error="An error occurred while writing the project."; return false; }
+    return true;
+}
+
+bool TasProject::LoadFromFile(const std::string& path, std::string* error) {
+    std::ifstream in(path);
+    if (!in) { if(error)*error="Could not open project file."; return false; }
+
+    std::string magic, loadedName;
+    int version=0;
+    std::size_t frameCount=0;
+    if (!(in >> magic >> version) || magic!="OPENTAS64_PROJECT" || version!=1) {
+        if(error)*error="Unsupported or invalid project file header.";
+        return false;
+    }
+    if (!(in >> std::quoted(loadedName) >> frameCount) || frameCount==0 || frameCount>10000000) {
+        if(error)*error="Invalid project metadata or frame count.";
+        return false;
+    }
+
+    std::vector<InputFrame> loadedFrames(frameCount);
+    for (auto& frame : loadedFrames) {
+        int values[14]{};
+        int x=0,y=0;
+        for (int& value : values) {
+            if (!(in >> value) || (value!=0 && value!=1)) {
+                if(error)*error="Invalid or incomplete controller data.";
+                return false;
+            }
+        }
+        if (!(in >> x >> y) || x < -128 || x > 127 || y < -128 || y > 127) {
+            if(error)*error="Invalid analog stick coordinates.";
+            return false;
+        }
+        auto& c=frame.controller;
+        c.a=values[0]!=0; c.b=values[1]!=0; c.z=values[2]!=0; c.start=values[3]!=0;
+        c.dUp=values[4]!=0; c.dDown=values[5]!=0; c.dLeft=values[6]!=0; c.dRight=values[7]!=0;
+        c.l=values[8]!=0; c.r=values[9]!=0; c.cUp=values[10]!=0; c.cDown=values[11]!=0;
+        c.cLeft=values[12]!=0; c.cRight=values[13]!=0;
+        c.stickX=static_cast<std::int8_t>(x); c.stickY=static_cast<std::int8_t>(y);
+    }
+
+    name=std::move(loadedName);
+    frames=std::move(loadedFrames);
+    selectedFrame=0;
+    return true;
+}
