@@ -1,6 +1,7 @@
 #include "TasProject.h"
 
 #include <algorithm>
+#include <cerrno>
 #include <cstdio>
 #include <cstdint>
 #include <fstream>
