@@ -28,9 +28,13 @@ union OT64_BUTTONS { std::uint32_t Value; };
 constexpr int OT64_INPUT_PLUGIN_API_VERSION = 0x020100;
 constexpr int OT64_PLUGIN_VERSION = 0x00010000;
 
+// Common Mupen64Plus plugin entry points.
 OT64_EXPORT m64p_error OT64_CALL PluginStartup(m64p_dynlib_handle, void*, void (*)(void*, int, const char*));
 OT64_EXPORT m64p_error OT64_CALL PluginShutdown();
 OT64_EXPORT m64p_error OT64_CALL PluginGetVersion(m64p_plugin_type*, int*, int*, const char**, int*);
+
+// Input-plugin callbacks must also be exported: the core resolves them by symbol name.
+// The target uses hidden visibility by default, so OT64_EXPORT is required here too.
 OT64_EXPORT void OT64_CALL InitiateControllers(OT64_CONTROL_INFO);
 OT64_EXPORT void OT64_CALL GetKeys(int, OT64_BUTTONS*);
 OT64_EXPORT void OT64_CALL ControllerCommand(int, unsigned char*);
