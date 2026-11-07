@@ -73,7 +73,23 @@ void App::HandleEvents()
     }
 }
 
-void App::Update() {}
+void App::Update()
+{
+    if (connection.IsConnected())
+    {
+        const auto& state = project.GetFrame(project.GetSelectedFrame()).controller;
+        if (!connection.SendController(0, state))
+            connectionStatus = "Connection lost";
+    }
+}
+
+void App::ConnectEmulatorPlugin()
+{
+    if (connection.Connect())
+        connectionStatus = "Connected to 127.0.0.1:6464 (controller 1)";
+    else
+        connectionStatus = "Could not connect. Is the OpenTAS64 Mupen plugin loaded?";
+}
 
 void App::SaveProject()
 {
@@ -222,25 +238,31 @@ void App::Render()
     ImGui::Begin("Project");
     ImGui::Text("Name: %s", project.GetName().c_str());
     ImGui::InputText("File path (.otas)", projectPath, sizeof(projectPath));
-    if (ImGui::Button("Save"))
-        SaveProject();
+    if (ImGui::Button("Save")) SaveProject();
     ImGui::SameLine();
-    if (ImGui::Button("Load"))
-        LoadProject();
+    if (ImGui::Button("Load")) LoadProject();
     ImGui::SameLine();
-    if (ImGui::Button("New"))
-        CreateNewProject();
+    if (ImGui::Button("New")) CreateNewProject();
     ImGui::TextColored(fileStatusOk ? ImVec4(0.35f, 0.85f, 0.45f, 1.0f)
                                     : ImVec4(1.0f, 0.35f, 0.3f, 1.0f),
         "%s", fileStatus.c_str());
     ImGui::End();
 
     ImGui::Begin("Connection");
-    ImGui::Text("Emulator: Not connected");
-    ImGui::TextWrapped("Emulator integration is not implemented yet. The TAS editor works offline.");
-    ImGui::BeginDisabled();
-    ImGui::Button("Connect");
-    ImGui::EndDisabled();
+    ImGui::Text("Mupen64Plus plugin: %s", connection.IsConnected() ? "Connected" : "Not connected");
+    ImGui::TextWrapped("Load the OpenTAS64 Network Input plugin in Mupen64Plus, then connect to its local bridge.");
+    if (!connection.IsConnected())
+    {
+        if (ImGui::Button("Connect to plugin")) ConnectEmulatorPlugin();
+    }
+    else if (ImGui::Button("Disconnect"))
+    {
+        connection.Disconnect();
+        connectionStatus = "Disconnected";
+    }
+    ImGui::TextWrapped("%s", connectionStatus.c_str());
+    ImGui::Text("Target: 127.0.0.1:6464");
+    ImGui::Text("Sending selected frame to controller port 1.");
     ImGui::End();
 
     ImGui::Begin("Input Editor");
@@ -258,6 +280,7 @@ void App::Render()
 
 void App::Shutdown()
 {
+    connection.Disconnect();
     ImGui_ImplSDLRenderer2_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();

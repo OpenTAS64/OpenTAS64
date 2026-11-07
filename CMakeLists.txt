@@ -11,6 +11,7 @@ find_package(SDL2 REQUIRED)
 add_executable(OpenTAS64
     src/main.cpp
     src/core/App.cpp
+    src/network/TcpClient.cpp
     src/tas/TasProject.cpp
     third_party/imgui/imgui.cpp
     third_party/imgui/imgui_draw.cpp
@@ -27,6 +28,10 @@ target_include_directories(OpenTAS64 PRIVATE
     third_party/imgui/backends
 )
 target_link_libraries(OpenTAS64 PRIVATE SDL2::SDL2)
+
+if(WIN32)
+    target_link_libraries(OpenTAS64 PRIVATE ws2_32)
+endif()
 
 add_subdirectory(plugins/mupen64plus-input)
 

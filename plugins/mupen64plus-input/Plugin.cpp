@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstring>
 #include <thread>
+#include <chrono>
 
 #if defined(_WIN32)
 #  ifndef NOMINMAX
@@ -19,6 +20,7 @@ static void CloseSocket(Socket s) { if (s != kInvalidSocket) closesocket(s); }
 #else
 #  include <arpa/inet.h>
 #  include <netinet/in.h>
+#  include <sys/select.h>
 #  include <sys/socket.h>
 #  include <unistd.h>
 using Socket = int;
@@ -40,10 +42,6 @@ struct ControllerState {
 std::array<ControllerState, 4> gControllers;
 std::atomic<bool> gRunning{false};
 std::thread gServerThread;
-Socket gListenSocket = kInvalidSocket;
-#if defined(_WIN32)
-bool gWinsockStarted = false;
-#endif
 void* gDebugContext = nullptr;
 void (*gDebugCallback)(void*, int, const char*) = nullptr;
 
@@ -66,14 +64,19 @@ bool ReceiveExact(Socket client, std::uint8_t* data, std::size_t length) {
     return received == length;
 }
 
+void ResetControllers() {
+    for (auto& controller : gControllers) {
+        controller.buttons.store(0);
+        controller.stickX.store(0);
+        controller.stickY.store(0);
+    }
+}
+
 void HandleClient(Socket client) {
     std::uint8_t packet[kPacketSize]{};
     while (gRunning.load() && ReceiveExact(client, packet, sizeof(packet))) {
-        // Wire format: "OT64", protocol version, controller index,
-        // button mask (big endian), signed stick X, signed stick Y.
         if (std::memcmp(packet, "OT64", 4) != 0 || packet[4] != 1 || packet[5] > 3)
             continue;
-
         const auto port = packet[5];
         const auto buttons = static_cast<std::uint16_t>(
             (static_cast<std::uint16_t>(packet[6]) << 8) | packet[7]);
@@ -81,17 +84,12 @@ void HandleClient(Socket client) {
         gControllers[port].stickX.store(static_cast<std::int8_t>(packet[8]));
         gControllers[port].stickY.store(static_cast<std::int8_t>(packet[9]));
     }
-
-    for (auto& controller : gControllers) {
-        controller.buttons.store(0);
-        controller.stickX.store(0);
-        controller.stickY.store(0);
-    }
+    ResetControllers();
 }
 
 void ServerLoop() {
-    gListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (gListenSocket == kInvalidSocket) {
+    Socket listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (listener == kInvalidSocket) {
         Log(1, "OpenTAS64 input bridge: could not create TCP socket.");
         gRunning.store(false);
         return;
@@ -99,63 +97,65 @@ void ServerLoop() {
 
     int reuse = 1;
 #if defined(_WIN32)
-    setsockopt(gListenSocket, SOL_SOCKET, SO_REUSEADDR,
+    setsockopt(listener, SOL_SOCKET, SO_REUSEADDR,
                reinterpret_cast<const char*>(&reuse), sizeof(reuse));
 #else
-    setsockopt(gListenSocket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+    setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 #endif
 
     sockaddr_in address{};
     address.sin_family = AF_INET;
     address.sin_port = htons(kPort);
     address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-
-    if (bind(gListenSocket, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0 ||
-        listen(gListenSocket, 1) != 0) {
+    if (bind(listener, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0 ||
+        listen(listener, 1) != 0) {
         Log(1, "OpenTAS64 input bridge: port 6464 is unavailable.");
-        CloseSocket(gListenSocket);
-        gListenSocket = kInvalidSocket;
+        CloseSocket(listener);
         gRunning.store(false);
         return;
     }
 
     Log(3, "OpenTAS64 input bridge listening on 127.0.0.1:6464.");
     while (gRunning.load()) {
+        fd_set readSet;
+        FD_ZERO(&readSet);
+        FD_SET(listener, &readSet);
+        timeval timeout{};
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 100000;
+#if defined(_WIN32)
+        const int ready = select(0, &readSet, nullptr, nullptr, &timeout);
+#else
+        const int ready = select(listener + 1, &readSet, nullptr, nullptr, &timeout);
+#endif
+        if (!gRunning.load()) break;
+        if (ready <= 0) continue;
+
         sockaddr_in peer{};
 #if defined(_WIN32)
         int peerLength = sizeof(peer);
 #else
         socklen_t peerLength = sizeof(peer);
 #endif
-        const Socket client = accept(gListenSocket, reinterpret_cast<sockaddr*>(&peer), &peerLength);
-        if (client == kInvalidSocket) {
-            if (gRunning.load()) Log(1, "OpenTAS64 input bridge: client accept failed.");
-            break;
-        }
-
-        // Only one editor may drive the emulator at a time.
+        const Socket client = accept(listener, reinterpret_cast<sockaddr*>(&peer), &peerLength);
+        if (client == kInvalidSocket) continue;
         Log(3, "OpenTAS64 editor connected.");
         HandleClient(client);
         CloseSocket(client);
         Log(3, "OpenTAS64 editor disconnected.");
     }
 
-    CloseSocket(gListenSocket);
-    gListenSocket = kInvalidSocket;
+    CloseSocket(listener);
+    ResetControllers();
 }
 
 void StopServer() {
-    if (!gRunning.exchange(false)) return;
-    if (gListenSocket != kInvalidSocket) {
-        CloseSocket(gListenSocket);
-        gListenSocket = kInvalidSocket;
+    if (!gRunning.exchange(false)) {
+        if (gServerThread.joinable()) gServerThread.join();
+        return;
     }
     if (gServerThread.joinable()) gServerThread.join();
-    for (auto& controller : gControllers) {
-        controller.buttons.store(0);
-        controller.stickX.store(0);
-        controller.stickY.store(0);
-    }
+    ResetControllers();
 }
 }
 
@@ -165,7 +165,6 @@ m64p_error OT64_CALL PluginStartup(m64p_dynlib_handle, void* context,
 #if defined(_WIN32)
     WSADATA data{};
     if (WSAStartup(MAKEWORD(2, 2), &data) != 0) return M64ERR_SYSTEM_FAIL;
-    gWinsockStarted = true;
 #endif
     gDebugContext = context;
     gDebugCallback = debugCallback;
@@ -176,7 +175,6 @@ m64p_error OT64_CALL PluginStartup(m64p_dynlib_handle, void* context,
         gRunning.store(false);
 #if defined(_WIN32)
         WSACleanup();
-        gWinsockStarted = false;
 #endif
         return M64ERR_SYSTEM_FAIL;
     }
@@ -186,10 +184,7 @@ m64p_error OT64_CALL PluginStartup(m64p_dynlib_handle, void* context,
 m64p_error OT64_CALL PluginShutdown() {
     StopServer();
 #if defined(_WIN32)
-    if (gWinsockStarted) {
-        WSACleanup();
-        gWinsockStarted = false;
-    }
+    WSACleanup();
 #endif
     gDebugCallback = nullptr;
     gDebugContext = nullptr;
@@ -212,7 +207,7 @@ void OT64_CALL InitiateControllers(OT64_CONTROL_INFO info) {
     for (int i = 0; i < 4; ++i) {
         info.Controls[i].Present = 1;
         info.Controls[i].RawData = 0;
-        info.Controls[i].Plugin = 1; // Standard controller / no accessory.
+        info.Controls[i].Plugin = 1;
         info.Controls[i].Type = 0;
     }
 }
@@ -221,8 +216,6 @@ void OT64_CALL GetKeys(int control, OT64_BUTTONS* keys) {
     if (!keys) return;
     keys->Value = 0;
     if (control < 0 || control >= static_cast<int>(gControllers.size())) return;
-
-    // N64 BUTTONS layout: D-pad, Start/Z/B/A, C buttons, R/L, X/Y.
     const auto buttons = gControllers[control].buttons.load();
     const auto x = static_cast<std::uint8_t>(gControllers[control].stickX.load());
     const auto y = static_cast<std::uint8_t>(gControllers[control].stickY.load());
@@ -234,10 +227,4 @@ void OT64_CALL GetKeys(int control, OT64_BUTTONS* keys) {
 void OT64_CALL ControllerCommand(int, unsigned char*) {}
 void OT64_CALL ReadController(int, unsigned char*) {}
 int OT64_CALL RomOpen() { return 1; }
-void OT64_CALL RomClosed() {
-    for (auto& controller : gControllers) {
-        controller.buttons.store(0);
-        controller.stickX.store(0);
-        controller.stickY.store(0);
-    }
-}
+void OT64_CALL RomClosed() { ResetControllers(); }

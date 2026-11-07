@@ -4,8 +4,7 @@
 
 The desktop application connects to the Mupen64Plus input plugin over loopback
 TCP. The plugin binds only to `127.0.0.1` on port `6464`; it is not a LAN
-control service. Mupen64Plus calls the plugin's input callback from its normal
-controller polling path.
+control service. Mupen64Plus polls the plugin through its normal controller API.
 
 ## Version 1 packet
 
@@ -38,4 +37,4 @@ indices are ignored.
 Version 1 is a live-state transport only. It has no frame counter, queue,
 acknowledgement, or clock synchronization. It must not yet be described as
 frame-accurate TAS playback. A later protocol revision will add sequence/frame
-numbers and an explicit synchronization strategy.
+numbers and explicit synchronization.

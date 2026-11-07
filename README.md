@@ -4,7 +4,7 @@
 
 OpenTAS64 is a standalone application for creating, editing, and analyzing Nintendo 64 Tool-Assisted Speedruns (TAS). It is designed to connect to existing emulators rather than replace them.
 
-> **🚧 Status:** Early development — offline project editing and native project files are implemented.
+> **🚧 Status:** Early development — offline editing, native project files, and the first Mupen64Plus input bridge are implemented.
 
 ## Implemented
 
@@ -12,18 +12,21 @@ OpenTAS64 is a standalone application for creating, editing, and analyzing Ninte
 - Emulator-independent controller and input-frame data model
 - Offline editor for N64 buttons and analog stick X/Y
 - Frame timeline with frame selection, insertion, and deletion
-- Native `.otas` project save/load
-- Versioned project format with backward compatibility for version 1 files
-- Project file validation and preservation of the current project on failed loads
-- CTest unit tests for project editing and serialization
+- Native `.otas` project save/load with versioned format
+- Mupen64Plus 2.x network input plugin
+- Local TCP connection between the editor and plugin
+- Live selected-frame controller state forwarding to controller port 1
 
-Projects can be edited and saved without an emulator. Emulator communication and movie conversion are not implemented yet; the connection panel remains unavailable until an adapter exists.
+The connection currently forwards the selected frame's state as a live controller state. Frame-accurate playback, emulator pause/reset/frame advance, movie conversion, and acknowledgements are not implemented yet.
 
-## Saving and loading projects
+## Mupen64Plus connection
 
-Open the **Project** panel, enter a path ending in `.otas`, and use **Save** or **Load**. The File menu also provides New, Save, and Load actions. Press **Ctrl+S** to save the current project.
+1. Build the `OpenTAS64MupenInput` target.
+2. Select the resulting shared library as the Mupen64Plus **Input Plugin**.
+3. Start Mupen64Plus with a ROM.
+4. Open OpenTAS64 and press **Connect to plugin** in the Connection panel.
 
-The native format is documented in [docs/PROJECT_FORMAT.md](docs/PROJECT_FORMAT.md).
+The plugin listens only on `127.0.0.1:6464`. See [plugins/mupen64plus-input/README.md](plugins/mupen64plus-input/README.md) and [docs/CONNECTION_PROTOCOL.md](docs/CONNECTION_PROTOCOL.md).
 
 ## Feature status
 
@@ -32,15 +35,15 @@ The native format is documented in [docs/PROJECT_FORMAT.md](docs/PROJECT_FORMAT.
 | Offline Input Editor | ✅ Implemented |
 | Frame Timeline | ✅ Implemented |
 | Native Project Save / Load | ✅ Implemented |
-| Versioned Project Format | ✅ Implemented |
+| Mupen64Plus Input Plugin | 🧪 Initial bridge |
+| Live Controller Forwarding | 🧪 Initial bridge |
 | Piano Roll | ⏳ Planned |
-| Frame Advance | ⏳ Planned |
-| Emulator Connection | ⏳ Planned |
+| Frame-Accurate TAS Playback | ⏳ Planned |
+| Emulator Frame Advance / Pause | ⏳ Planned |
 | Savestate Manager | ⏳ Planned |
 | RAM Watch / Search | ⏳ Planned |
 | Lua Scripting | ⏳ Planned |
 | Movie Import / Export | ⏳ Planned |
-| Rerecord Counter | ⏳ Planned |
 
 ## Build requirements
 
@@ -56,22 +59,12 @@ cmake --build build --config Release
 ctest --test-dir build --output-on-failure
 ```
 
-## Emulator support
+## Architecture and documentation
 
-Mupen64Plus is the first planned integration. No emulator is currently connected.
-
-## Roadmap
-
-- **0.3:** Piano-roll view and movie playback controls
-- **0.4:** RAM watch, RAM search, and hex viewer
-- **0.5:** Lua scripting and overlay support
-- **1.0:** Stable release, emulator integrations, documentation, and plugin API
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for module boundaries and [docs/PROJECT_FORMAT.md](docs/PROJECT_FORMAT.md) for the native file format.
-
-## Contributing
-
-Issues and pull requests are welcome.
+- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [Native project format](docs/PROJECT_FORMAT.md)
+- [Connection protocol](docs/CONNECTION_PROTOCOL.md)
+- [Mupen64Plus plugin setup](plugins/mupen64plus-input/README.md)
 
 ## License
 
