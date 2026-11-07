@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(OpenTAS64 VERSION 0.3.0 LANGUAGES CXX)
+project(OpenTAS64 VERSION 0.4.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -27,6 +27,8 @@ target_include_directories(OpenTAS64 PRIVATE
     third_party/imgui/backends
 )
 target_link_libraries(OpenTAS64 PRIVATE SDL2::SDL2)
+
+add_subdirectory(plugins/mupen64plus-input)
 
 if(BUILD_TESTING)
     add_executable(TasProjectTests
