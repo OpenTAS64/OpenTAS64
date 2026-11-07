@@ -27,10 +27,10 @@ target_include_directories(OpenTAS64 PRIVATE
     third_party/imgui
     third_party/imgui/backends
 )
-if(TARGET SDL2::SDL2main)
-    target_link_libraries(OpenTAS64 PRIVATE SDL2::SDL2main)
-endif()
 
+# Use the standard C/C++ entry point on every platform. SDL's platform
+# entry-point wrapper (SDL2main) is intentionally not linked.
+target_compile_definitions(OpenTAS64 PRIVATE SDL_MAIN_HANDLED)
 target_link_libraries(OpenTAS64 PRIVATE SDL2::SDL2)
 
 if(WIN32)

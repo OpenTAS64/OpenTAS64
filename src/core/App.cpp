@@ -12,6 +12,10 @@
 
 bool App::Init()
 {
+    // SDL_MAIN_HANDLED is set by CMake, so explicitly notify SDL that the
+    // platform entry point has already run before initializing SDL.
+    SDL_SetMainReady();
+
     if (SDL_Init(SDL_INIT_VIDEO) != 0)
     {
         std::cerr << "SDL_Init Error: " << SDL_GetError() << std::endl;
