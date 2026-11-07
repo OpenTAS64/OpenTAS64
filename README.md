@@ -2,114 +2,66 @@
 
 > **A modern, open-source TAS toolkit for Nintendo 64 emulators.**
 
-OpenTAS64 is a standalone application for creating, editing, and analyzing Nintendo 64 Tool-Assisted Speedruns (TAS). It aims to provide a modern workflow with powerful editing tools while connecting to existing emulators instead of replacing them.
+OpenTAS64 is a standalone application for creating, editing, and analyzing Nintendo 64 Tool-Assisted Speedruns (TAS). It is designed to connect to existing emulators rather than replace them.
 
-> **🚧 Status:** Early development
+> **🚧 Status:** Early development — the offline TAS input editor is the first functional application feature.
 
----
+## Implemented
 
-## ✨ Planned Features
+- SDL2 desktop application with Dear ImGui docking interface
+- Emulator-independent controller and input-frame data model
+- Offline editor for N64 buttons and analog stick X/Y
+- Frame timeline with frame selection, insertion, and deletion
+- New-project reset
+
+Projects currently exist in memory only. Saving/loading, movie conversion, and emulator communication are not implemented. The connection panel is intentionally unavailable until an emulator adapter exists.
+
+## Feature status
 
 | Feature | Status |
-|---------|:------:|
-| 🎹 Piano Roll | ⏳ Planned |
-| ⏯️ Frame Advance | ⏳ Planned |
-| 🎮 Input Editor | ⏳ Planned |
-| 💾 Savestate Manager | ⏳ Planned |
-| 🧠 RAM Watch | ⏳ Planned |
-| 🔍 RAM Search | ⏳ Planned |
-| 📜 Lua Scripting | ⏳ Planned |
-| 📂 Movie Import/Export | ⏳ Planned |
-| 📈 Rerecord Counter | ⏳ Planned |
-| 📊 Input Visualization | ⏳ Planned |
+|---|:---:|
+| Offline Input Editor | ✅ Implemented |
+| Frame Timeline | ✅ Implemented |
+| Piano Roll | ⏳ Planned |
+| Frame Advance | ⏳ Planned |
+| Emulator Connection | ⏳ Planned |
+| Savestate Manager | ⏳ Planned |
+| RAM Watch / Search | ⏳ Planned |
+| Lua Scripting | ⏳ Planned |
+| Movie Import / Export | ⏳ Planned |
+| Rerecord Counter | ⏳ Planned |
 
----
+## Build requirements
 
-## 🎯 Goals
+- C++17 compiler
+- CMake 3.16+
+- SDL2 development package
+- Git submodules initialized (Dear ImGui)
 
-- Modern user interface
-- Open Source
-- Cross-platform
-- High performance
-- Community-driven
-- Easy to extend
-- Designed specifically for Nintendo 64 TASing
+```bash
+git submodule update --init --recursive
+cmake -S . -B build
+cmake --build build --config Release
+```
 
----
+## Emulator support
 
-## 🖥️ Planned Platform Support
+Mupen64Plus is the first planned integration. No emulator is currently connected.
 
-- ✅ Linux
-- ✅ Windows
-- ✅ macOS
+## Roadmap
 
----
+- **0.2:** Offline TAS data model, input editor, and timeline
+- **0.3:** Piano-roll view and movie playback controls
+- **0.4:** RAM watch, RAM search, and hex viewer
+- **0.5:** Lua scripting and overlay support
+- **1.0:** Stable release, project/movie formats, documentation, and plugin API
 
-## 🎮 Planned Emulator Support
+See [ARCHITECTURE.md](ARCHITECTURE.md) for module boundaries and the planned integration design.
 
-Currently planned:
+## Contributing
 
-- Mupen64Plus
+Issues and pull requests are welcome.
 
-Future support may include additional Nintendo 64 emulators.
+## License
 
----
-
-## 🛣️ Roadmap
-
-### Version 0.1
-- Emulator connection
-- Read controller inputs
-- Basic project structure
-
-### Version 0.2
-- Input Editor
-- Frame Advance
-- Timeline
-
-### Version 0.3
-- Piano Roll
-- Movie playback controls
-
-### Version 0.4
-- RAM Watch
-- RAM Search
-- Hex Viewer
-
-### Version 0.5
-- Lua scripting
-- Overlay support
-
-### Version 1.0
-- Stable release
-- Documentation
-- Plugin API
-- Full TAS editing workflow
-
----
-
-## 🤝 Contributing
-
-Contributions are always welcome!
-
-If you have ideas, find a bug, or want to help develop OpenTAS64, feel free to open an Issue or submit a Pull Request.
-
----
-
-## 📄 License
-
-This project is licensed under the **MIT License**.
-
----
-
-## ❤️ Vision
-
-The goal of OpenTAS64 is to provide the Nintendo 64 TAS community with a modern, feature-rich, and completely open-source toolkit that makes creating and editing TAS movies easier than ever before.
-
-OpenTAS64 is built by TASers, for TASers.
-
----
-
-<p align="center">
-Made with ❤️ for the Nintendo 64 TAS community.
-</p>
+MIT — see [LICENSE](LICENSE).
