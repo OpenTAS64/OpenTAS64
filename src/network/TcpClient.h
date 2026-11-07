@@ -2,6 +2,8 @@
 
 #include "../tas/ControllerState.h"
 #include <cstdint>
+#include <array>
+#include <cstddef>
 
 class TcpClient
 {
@@ -14,7 +16,8 @@ public:
     bool Connect(const char* host = "127.0.0.1", std::uint16_t port = 6464);
     void Disconnect();
     bool IsConnected() const;
-    bool SendController(int controller, const ControllerState& state);
+    bool SendFrame(int controller, std::uint64_t frameNumber, const ControllerState& state);
+    bool PollAcknowledgement(std::uint64_t& frameNumber);
 
 private:
 #if defined(_WIN32)
@@ -26,4 +29,8 @@ private:
 #endif
     Socket socket_ = InvalidSocket;
     bool winsockStarted_ = false;
+    std::array<std::uint8_t, 18> sendBuffer_{};
+    std::size_t sendBytes_ = 0;
+    std::array<std::uint8_t, 14> ackBuffer_{};
+    std::size_t ackBytes_ = 0;
 };

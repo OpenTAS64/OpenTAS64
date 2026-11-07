@@ -1,40 +1,50 @@
 # OpenTAS64 Connection Protocol
 
-## Topology
+## Transport
 
 The desktop application connects to the Mupen64Plus input plugin over loopback
-TCP. The plugin binds only to `127.0.0.1` on port `6464`; it is not a LAN
-control service. Mupen64Plus polls the plugin through its normal controller API.
+TCP on `127.0.0.1:6464`. Protocol v2 uses strict lockstep: the editor sends
+one input frame and waits for the plugin's acknowledgement before sending the
+next frame. No frame backlog is allowed.
 
-## Version 1 packet
-
-All packets are exactly 10 bytes and may be sent back-to-back on one TCP stream.
+## Frame packet (18 bytes)
 
 | Offset | Bytes | Field |
 |---:|---:|---|
 | 0 | 4 | `OT64` magic |
-| 4 | 1 | Protocol version, currently 1 |
+| 4 | 1 | Protocol version, `2` |
 | 5 | 1 | Controller port, 0 through 3 |
-| 6 | 2 | Button bitmask, big-endian |
-| 8 | 1 | Signed analog X |
-| 9 | 1 | Signed analog Y |
+| 6 | 8 | TAS frame number, unsigned big-endian |
+| 14 | 2 | Button bitmask, big-endian |
+| 16 | 1 | Signed analog X |
+| 17 | 1 | Signed analog Y |
 
-Button bit positions:
+Button bit positions: 0–3 D-right/left/down/up; 4–7 Start/Z/B/A;
+8–11 C-right/left/down/up; 12–13 R/L.
 
-| Bit | N64 control |
-|---:|---|
-| 0–3 | D-right, D-left, D-down, D-up |
-| 4–7 | Start, Z, B, A |
-| 8–11 | C-right, C-left, C-down, C-up |
-| 12–13 | R, L |
+## Acknowledgement (14 bytes)
 
-The plugin stores the latest state per controller. A disconnected client causes
-all inputs to return to neutral. Unknown packet versions and invalid controller
-indices are ignored.
+| Offset | Bytes | Field |
+|---:|---:|---|
+| 0 | 4 | `ACK2` magic |
+| 4 | 1 | Protocol version, `2` |
+| 5 | 1 | Status, `0` = accepted |
+| 6 | 8 | Acknowledged TAS frame number, unsigned big-endian |
 
-## Timing limitation
+## Meaning and limitations
 
-Version 1 is a live-state transport only. It has no frame counter, queue,
-acknowledgement, or clock synchronization. It must not yet be described as
-frame-accurate TAS playback. A later protocol revision will add sequence/frame
-numbers and explicit synchronization.
+The acknowledgement is emitted only after Mupen64Plus calls the input
+plugin's `GetKeys` callback and that callback latches the queued input for the
+requested controller. This confirms that the emulator input-poll callback
+consumed that frame before the editor advances to the next one.
+
+This is an input-poll acknowledgement, **not** proof that the corresponding
+video frame has finished rendering or that the emulator's internal frame
+counter equals the TAS frame number. The standard input-plugin callback API
+does not expose a reliable post-render frame-complete event. Exact rendered
+frame synchronization will require a cooperating core/video-plugin hook or
+a supported emulator-side frame callback.
+
+Only one frame may be in flight. Disconnecting or closing the ROM clears
+pending input and returns all controller states to neutral. Protocol v1 is
+not compatible with v2.

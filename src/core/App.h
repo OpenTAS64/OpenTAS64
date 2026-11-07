@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SDL2/SDL.h>
+#include <cstdint>
 #include <string>
 #include "network/TcpClient.h"
 #include "tas/TasProject.h"
@@ -32,4 +33,7 @@ private:
     std::string connectionStatus = "Not connected";
     bool fileStatusOk = true;
     bool running = true;
+    bool playback = false;
+    bool frameInFlight = false;
+    std::uint64_t inFlightFrame = 0;
 };
