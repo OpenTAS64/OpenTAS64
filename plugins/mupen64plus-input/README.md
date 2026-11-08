@@ -23,8 +23,10 @@ from the emulator executable and does not replace graphics, audio, or RSP.
 
 ## Connection protocol
 
-See [the protocol specification](../../docs/CONNECTION_PROTOCOL.md). This first
-milestone sends the currently selected input state to controller port 1.
-Frame scheduling, acknowledgements, playback synchronization, and emulator
-frame control are not implemented yet. A TCP packet arriving does not itself
+See [the protocol specification](../../docs/CONNECTION_PROTOCOL.md). Protocol v2 queues exactly one TAS input frame at a time. The plugin applies
+that frame when Mupen64Plus calls the input plugin's `GetKeys` callback, then
+sends an acknowledgement to the editor. This lets the editor wait for input
+polling before sending the next frame. The acknowledgement is not a rendered-
+frame completion signal; exact video-frame synchronization requires an
+emulator core or video-plugin callback. A TCP packet arriving does not itself
 guarantee a particular emulated frame.
