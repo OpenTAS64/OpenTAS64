@@ -48,29 +48,42 @@ void App::HandleEvents() {
     }
 }
 void App::Update() {
-    if (!connection.IsConnected() || !playback) return;
+    if (!connection.IsConnected()) {
+        if (frameInFlight) {
+            playback = false;
+            frameInFlight = false;
+            stopAfterAck = false;
+            connectionStatus = "Connection lost while waiting for frame acknowledgement.";
+        }
+        return;
+    }
+    if (!playback && !frameInFlight) return;
     if (frameInFlight) {
         std::uint64_t acknowledged = 0;
         if (connection.PollAcknowledgement(acknowledged)) {
             if (acknowledged != inFlightFrame) {
                 playback = false;
+                frameInFlight = false;
+                stopAfterAck = false;
                 connectionStatus = "Protocol error: received an unexpected frame acknowledgement.";
                 return;
             }
             frameInFlight = false;
-            if (project.GetSelectedFrame() + 1 >= project.GetFrameCount()) {
+            if (project.GetSelectedFrame() + 1 < project.GetFrameCount())
+                project.SelectFrame(project.GetSelectedFrame() + 1);
+
+            if (stopAfterAck) {
+                stopAfterAck = false;
+                playback = false;
+                connectionStatus = "Playback stopped safely after the in-flight frame was acknowledged.";
+            } else if (project.GetSelectedFrame() + 1 >= project.GetFrameCount()) {
                 playback = false;
                 connectionStatus = "Playback finished. Last input frame was acknowledged by Mupen64Plus.";
-            } else {
-                project.SelectFrame(project.GetSelectedFrame() + 1);
             }
-        } else if (!connection.IsConnected()) {
-            playback = false;
-            frameInFlight = false;
-            connectionStatus = "Connection lost while waiting for frame acknowledgement.";
         }
         return;
     }
+    if (!playback) return;
 
     const auto frame = project.GetSelectedFrame();
     const auto& state = project.GetFrame(frame).controller;
@@ -94,13 +107,23 @@ void App::SaveProject() {
     } else { fileStatus = error; fileStatusOk = false; }
 }
 void App::LoadProject() {
+    if (frameInFlight) {
+        fileStatus = "Wait for the current emulator input frame to be acknowledged before loading.";
+        fileStatusOk = false;
+        return;
+    }
     std::string error;
     if (project.LoadFromFile(projectPath, &error)) {
         fileStatus = "Loaded " + std::string(projectPath); fileStatusOk = true;
     } else { fileStatus = error; fileStatusOk = false; }
 }
 void App::CreateNewProject() {
-    playback = false; frameInFlight = false;
+    if (frameInFlight) {
+        fileStatus = "Wait for the current emulator input frame to be acknowledged before creating a project.";
+        fileStatusOk = false;
+        return;
+    }
+    playback = false; stopAfterAck = false;
     project.Clear(); project.SetName("Untitled TAS");
     std::strncpy(projectPath, "project.otas", sizeof(projectPath) - 1);
     projectPath[sizeof(projectPath) - 1] = '\0';
@@ -135,20 +158,31 @@ void App::RenderTimeline() {
     if (ImGui::Button("Next") && !frameInFlight)
         project.SelectFrame(project.GetSelectedFrame() + 1);
     ImGui::SameLine();
-    if (ImGui::Button("Insert") && !playback) project.InsertFrame(project.GetSelectedFrame());
+    if (ImGui::Button("Insert") && !playback && !frameInFlight) project.InsertFrame(project.GetSelectedFrame());
     ImGui::SameLine();
-    if (ImGui::Button("Delete") && !playback) project.DeleteFrame(project.GetSelectedFrame());
+    if (ImGui::Button("Delete") && !playback && !frameInFlight) project.DeleteFrame(project.GetSelectedFrame());
     ImGui::SameLine();
-    if (!playback) {
+    if (!playback && !frameInFlight) {
         if (ImGui::Button("Play from selected frame")) {
             if (connection.IsConnected()) {
-                playback = true; frameInFlight = false;
+                playback = true;
+                stopAfterAck = false;
                 connectionStatus = "Lockstep playback started.";
             } else connectionStatus = "Connect to the Mupen64Plus plugin first.";
         }
+    } else if (stopAfterAck) {
+        ImGui::BeginDisabled();
+        ImGui::Button("Stopping...");
+        ImGui::EndDisabled();
     } else if (ImGui::Button("Stop")) {
-        playback = false; frameInFlight = false;
-        connectionStatus = "Playback stopped.";
+        if (frameInFlight) {
+            stopAfterAck = true;
+            playback = false;
+            connectionStatus = "Stop requested; waiting for the current input frame to be acknowledged.";
+        } else {
+            playback = false;
+            connectionStatus = "Playback stopped.";
+        }
     }
     ImGui::Separator();
     ImGui::TextWrapped("%s", connectionStatus.c_str());
@@ -185,7 +219,10 @@ void App::Render() {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("New project")) CreateNewProject();
             if (ImGui::MenuItem("Save project", "Ctrl+S")) SaveProject();
-            if (ImGui::MenuItem("Load project")) { playback = false; frameInFlight = false; LoadProject(); }
+            if (ImGui::MenuItem("Load project")) {
+                if (!frameInFlight) { playback = false; LoadProject(); }
+                else { fileStatus = "Wait for the in-flight frame acknowledgement before loading."; fileStatusOk = false; }
+            }
             ImGui::Separator();
             if (ImGui::MenuItem("Exit")) running = false;
             ImGui::EndMenu();
@@ -197,7 +234,10 @@ void App::Render() {
     ImGui::Text("Name: %s", project.GetName().c_str());
     ImGui::InputText("File path (.otas)", projectPath, sizeof(projectPath));
     if (ImGui::Button("Save")) SaveProject();
-    ImGui::SameLine(); if (ImGui::Button("Load")) { playback = false; frameInFlight = false; LoadProject(); }
+    ImGui::SameLine(); if (ImGui::Button("Load")) {
+        if (!frameInFlight) { playback = false; LoadProject(); }
+        else { fileStatus = "Wait for the in-flight frame acknowledgement before loading."; fileStatusOk = false; }
+    }
     ImGui::SameLine(); if (ImGui::Button("New")) CreateNewProject();
     ImGui::TextColored(fileStatusOk ? ImVec4(0.35f,0.85f,0.45f,1.0f) : ImVec4(1.0f,0.35f,0.3f,1.0f), "%s", fileStatus.c_str());
     ImGui::End();
