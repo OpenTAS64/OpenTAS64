@@ -223,18 +223,18 @@ void App::RenderTimeline() {
     const auto start = selected > 12 ? selected - 12 : 0;
     const auto end = std::min(count, start + 40);
     ImGui::BeginChild("FrameStrip", ImVec2(0, 0), true);
+    ImGui::BeginDisabled(playback || frameInFlight);
     for (std::size_t i = start; i < end; ++i) {
         ImGui::PushID(static_cast<int>(i));
         const auto label = std::string(i == selected ? "> Frame " : "  Frame ") + std::to_string(i);
-        if (ImGui::Selectable(label.c_str(), i == selected, 0, ImVec2(112, 30)) &&
-            !playback && !frameInFlight) {
+        if (ImGui::Selectable(label.c_str(), i == selected, 0, ImVec2(112, 30)))
             project.SelectFrame(i);
-        }
         ImGui::SameLine();
         const auto summary = DescribeController(project.GetFrame(i).controller);
         ImGui::TextUnformatted(summary.c_str());
         ImGui::PopID();
     }
+    ImGui::EndDisabled();
     ImGui::EndChild();
 }
 void App::Render() {
