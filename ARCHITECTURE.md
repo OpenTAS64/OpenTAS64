@@ -5,21 +5,23 @@ OpenTAS64 separates TAS data, persistence, the desktop UI, and emulator integrat
 ## Modules
 
 - `src/tas/`: emulator-independent controller states, input frames, timeline operations, and native project serialization.
-- `src/core/`: SDL2 application lifecycle, project controls, and Dear ImGui presentation.
-- `src/network/`: desktop-side TCP client for the local plugin bridge.
+- `src/core/`: SDL2 application lifecycle, project controls, timeline/Piano Roll presentation, playback state, and Dear ImGui UI.
+- `src/network/`: desktop-side TCP client for the local plugin bridge, including frame delivery and acknowledgement handling.
 - `plugins/mupen64plus-input/`: Mupen64Plus 2.x input plugin and loopback TCP server.
 - `src/emulator/`: reserved for future emulator control APIs beyond controller input.
 - `tests/`: standalone tests for the TAS project model and persistence layer.
 
 ## Connection design
 
-The editor sends a compact, versioned controller-state packet over loopback TCP.
-The Mupen64Plus plugin receives packets on a worker thread and publishes the
-latest state through atomics. The emulator's normal `GetKeys` callback reads
-that state without waiting on network I/O. A disconnect resets all controls.
+The editor sends versioned, frame-indexed controller packets over loopback TCP. Protocol v2 permits only one frame in flight. The Mupen64Plus plugin receives packets on a worker thread and makes the queued state available to the emulator's normal `GetKeys` callback. The callback latches the input and the plugin then acknowledges that input poll. The editor waits for the acknowledgement before sending the next frame.
 
-The plugin binds exclusively to `127.0.0.1`; it is not exposed to other
-machines on the network.
+The plugin binds exclusively to `127.0.0.1`; it is not exposed to other machines on the network. A disconnect resets controller state to neutral.
+
+## Editor and playback
+
+The timeline and vertical Piano Roll edit the same emulator-independent frame data. The Piano Roll displays controller buttons as columns and input frames as rows, with analog stick X/Y values available for each frame.
+
+Lockstep playback sends one input frame at a time and waits for its input-poll acknowledgement. Step Frame uses the same mechanism for a single frame. It is therefore a single **input-poll step**, not yet a guarantee that the corresponding rendered video frame has completed.
 
 ## Design rules
 
@@ -29,16 +31,15 @@ machines on the network.
 4. Emulator-specific behavior belongs behind an adapter/plugin boundary.
 5. Frame indices are zero-based internally.
 6. Every project contains at least one editable frame.
+7. An input-poll acknowledgement must not be described as a rendered-frame acknowledgement.
 
-## Current connection limitation
+## Current synchronization limitation
 
-The initial bridge forwards the selected frame as a live input state. It does
-not provide frame-indexed delivery, frame acknowledgements, pause/reset, or
-frame advance. These are required before claiming deterministic TAS playback.
+The standard Mupen64Plus input-plugin callback confirms when input is polled, but does not provide a reliable post-render frame-complete event. OpenTAS64 cannot currently prove that the emulator's internal frame counter matches the TAS frame number. Deterministic rendered-frame synchronization will require a cooperating core/video-plugin hook or another supported emulator-side frame callback.
 
 ## Next steps
 
-- Add a frame-indexed protocol and explicit delivery acknowledgements.
-- Implement playback scheduling and frame-advance integration.
-- Add Mupen64Plus core control for pause, reset, and savestates.
-- Add piano-roll view and movie import/export adapters.
+- Verify actual controller input delivery and Step Frame behavior in a running game.
+- Investigate a supported emulator-side frame-complete callback for stronger synchronization.
+- Add emulator control integration for pause, reset, and savestates.
+- Expand movie import/export and memory inspection features.

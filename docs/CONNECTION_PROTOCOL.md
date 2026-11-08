@@ -1,11 +1,10 @@
 # OpenTAS64 Connection Protocol
 
-## Transport
+## Transport and delivery
 
-The desktop application connects to the Mupen64Plus input plugin over loopback
-TCP on `127.0.0.1:6464`. Protocol v2 uses strict lockstep: the editor sends
-one input frame and waits for the plugin's acknowledgement before sending the
-next frame. No frame backlog is allowed.
+The desktop application connects to the Mupen64Plus input plugin over loopback TCP on `127.0.0.1:6464`. Protocol v2 uses strict lockstep: the editor sends one input frame and waits for the plugin's acknowledgement before sending the next frame. No frame backlog is allowed.
+
+The same request/acknowledgement mechanism is used by normal lockstep playback and the **Step Frame** control. Step Frame sends one input frame and waits for one input-poll acknowledgement before completing the step.
 
 ## Frame packet (18 bytes)
 
@@ -19,8 +18,7 @@ next frame. No frame backlog is allowed.
 | 16 | 1 | Signed analog X |
 | 17 | 1 | Signed analog Y |
 
-Button bit positions: 0–3 D-right/left/down/up; 4–7 Start/Z/B/A;
-8–11 C-right/left/down/up; 12–13 R/L.
+Button bit positions: 0–3 D-right/left/down/up; 4–7 Start/Z/B/A; 8–11 C-right/left/down/up; 12–13 R/L.
 
 ## Acknowledgement (14 bytes)
 
@@ -33,18 +31,10 @@ Button bit positions: 0–3 D-right/left/down/up; 4–7 Start/Z/B/A;
 
 ## Meaning and limitations
 
-The acknowledgement is emitted only after Mupen64Plus calls the input
-plugin's `GetKeys` callback and that callback latches the queued input for the
-requested controller. This confirms that the emulator input-poll callback
-consumed that frame before the editor advances to the next one.
+The acknowledgement is emitted only after Mupen64Plus calls the input plugin's `GetKeys` callback and that callback latches the queued input for the requested controller. This confirms that the emulator input-poll callback consumed that frame before the editor advances to the next one.
 
-This is an input-poll acknowledgement, **not** proof that the corresponding
-video frame has finished rendering or that the emulator's internal frame
-counter equals the TAS frame number. The standard input-plugin callback API
-does not expose a reliable post-render frame-complete event. Exact rendered
-frame synchronization will require a cooperating core/video-plugin hook or
-a supported emulator-side frame callback.
+For **Step Frame**, one successful acknowledgement completes one input-poll step. It does not mean that a complete rendered video frame has elapsed.
 
-Only one frame may be in flight. Disconnecting or closing the ROM clears
-pending input and returns all controller states to neutral. Protocol v1 is
-not compatible with v2.
+This is an input-poll acknowledgement, **not** proof that the corresponding video frame has finished rendering or that the emulator's internal frame counter equals the TAS frame number. The standard input-plugin callback API does not expose a reliable post-render frame-complete event. Exact rendered-frame synchronization will require a cooperating core/video-plugin hook or a supported emulator-side frame callback.
+
+Only one frame may be in flight. Disconnecting or closing the ROM clears pending input and returns all controller states to neutral. Protocol v1 is not compatible with v2.
