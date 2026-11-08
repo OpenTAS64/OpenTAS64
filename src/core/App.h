@@ -36,5 +36,6 @@ private:
     bool playback = false;
     bool frameInFlight = false;
     bool stopAfterAck = false;
+    bool singleStepRequested = false;
     std::uint64_t inFlightFrame = 0;
 };
