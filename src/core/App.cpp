@@ -10,6 +10,30 @@
 #include "backends/imgui_impl_sdl2.h"
 #include "backends/imgui_impl_sdlrenderer2.h"
 
+namespace {
+std::string DescribeController(const ControllerState& c)
+{
+    std::string buttons;
+    const auto add = [&buttons](bool pressed, const char* name) {
+        if (!pressed) return;
+        if (!buttons.empty()) buttons += " ";
+        buttons += name;
+    };
+
+    add(c.a, "A"); add(c.b, "B"); add(c.z, "Z"); add(c.start, "Start");
+    add(c.l, "L"); add(c.r, "R");
+    add(c.dUp, "D-Up"); add(c.dDown, "D-Down");
+    add(c.dLeft, "D-Left"); add(c.dRight, "D-Right");
+    add(c.cUp, "C-Up"); add(c.cDown, "C-Down");
+    add(c.cLeft, "C-Left"); add(c.cRight, "C-Right");
+
+    if (buttons.empty()) buttons = "No buttons";
+    buttons += "  |  Stick (" + std::to_string(static_cast<int>(c.stickX)) +
+        ", " + std::to_string(static_cast<int>(c.stickY)) + ")";
+    return buttons;
+}
+} // namespace
+
 bool App::Init()
 {
     SDL_SetMainReady();
@@ -150,17 +174,19 @@ void App::RenderInputEditor() {
     ImGui::Text("Raw stick: (%d, %d)", static_cast<int>(c.stickX), static_cast<int>(c.stickY));
 }
 void App::RenderTimeline() {
-    ImGui::Text("Frames: %zu", project.GetFrameCount());
+    const auto count = project.GetFrameCount();
+    const auto selected = project.GetSelectedFrame();
+    ImGui::Text("Frames: %zu  |  Selected frame: %zu", count, selected);
     ImGui::SameLine();
-    if (ImGui::Button("Previous") && project.GetSelectedFrame() > 0 && !frameInFlight)
-        project.SelectFrame(project.GetSelectedFrame() - 1);
+    if (ImGui::Button("Previous") && selected > 0 && !playback && !frameInFlight)
+        project.SelectFrame(selected - 1);
     ImGui::SameLine();
-    if (ImGui::Button("Next") && !frameInFlight)
-        project.SelectFrame(project.GetSelectedFrame() + 1);
+    if (ImGui::Button("Next") && selected + 1 < count && !playback && !frameInFlight)
+        project.SelectFrame(selected + 1);
     ImGui::SameLine();
-    if (ImGui::Button("Insert") && !playback && !frameInFlight) project.InsertFrame(project.GetSelectedFrame());
+    if (ImGui::Button("Insert") && !playback && !frameInFlight) project.InsertFrame(selected);
     ImGui::SameLine();
-    if (ImGui::Button("Delete") && !playback && !frameInFlight) project.DeleteFrame(project.GetSelectedFrame());
+    if (ImGui::Button("Delete") && !playback && !frameInFlight) project.DeleteFrame(selected);
     ImGui::SameLine();
     if (!playback && !frameInFlight) {
         if (ImGui::Button("Play from selected frame")) {
@@ -186,17 +212,20 @@ void App::RenderTimeline() {
     }
     ImGui::Separator();
     ImGui::TextWrapped("%s", connectionStatus.c_str());
-    const auto count = project.GetFrameCount();
-    const auto selected = project.GetSelectedFrame();
+    ImGui::TextDisabled("Select a frame to edit its inputs in the Input Editor. Button states and stick coordinates are previewed below.");
     const auto start = selected > 12 ? selected - 12 : 0;
     const auto end = std::min(count, start + 40);
     ImGui::BeginChild("FrameStrip", ImVec2(0, 0), true);
     for (std::size_t i = start; i < end; ++i) {
-        if (i != start) ImGui::SameLine();
-        const auto label = std::to_string(i);
         ImGui::PushID(static_cast<int>(i));
-        if (ImGui::Selectable(label.c_str(), i == selected, 0, ImVec2(42, 38)) &&
-            !playback && !frameInFlight) project.SelectFrame(i);
+        const auto label = std::string(i == selected ? "> Frame " : "  Frame ") + std::to_string(i);
+        if (ImGui::Selectable(label.c_str(), i == selected, 0, ImVec2(112, 30)) &&
+            !playback && !frameInFlight) {
+            project.SelectFrame(i);
+        }
+        ImGui::SameLine();
+        const auto summary = DescribeController(project.GetFrame(i).controller);
+        ImGui::TextUnformatted(summary.c_str());
         ImGui::PopID();
     }
     ImGui::EndChild();
