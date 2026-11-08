@@ -156,6 +156,10 @@ void App::CreateNewProject() {
 void App::RenderInputEditor() {
     auto& c = project.GetFrame(project.GetSelectedFrame()).controller;
     ImGui::Text("Editing frame %zu", project.GetSelectedFrame());
+    const bool editingLocked = playback || frameInFlight;
+    if (editingLocked)
+        ImGui::TextDisabled("Input editing is locked during playback or while a frame is in flight.");
+    ImGui::BeginDisabled(editingLocked);
     ImGui::Separator();
     ImGui::Columns(3, nullptr, false);
     ImGui::Checkbox("A", &c.a); ImGui::Checkbox("B", &c.b);
@@ -172,6 +176,7 @@ void App::RenderInputEditor() {
     if (ImGui::SliderInt("Stick X", &x, -128, 127)) c.stickX = static_cast<std::int8_t>(x);
     if (ImGui::SliderInt("Stick Y", &y, -128, 127)) c.stickY = static_cast<std::int8_t>(y);
     ImGui::Text("Raw stick: (%d, %d)", static_cast<int>(c.stickX), static_cast<int>(c.stickY));
+    ImGui::EndDisabled();
 }
 void App::RenderTimeline() {
     const auto count = project.GetFrameCount();
