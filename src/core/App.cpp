@@ -183,15 +183,17 @@ void App::RenderTimeline() {
     const auto selected = project.GetSelectedFrame();
     ImGui::Text("Frames: %zu  |  Selected frame: %zu", count, selected);
     ImGui::SameLine();
-    if (ImGui::Button("Previous") && selected > 0 && !playback && !frameInFlight)
+    ImGui::BeginDisabled(playback || frameInFlight);
+    if (ImGui::Button("Previous") && selected > 0)
         project.SelectFrame(selected - 1);
     ImGui::SameLine();
-    if (ImGui::Button("Next") && selected + 1 < count && !playback && !frameInFlight)
+    if (ImGui::Button("Next") && selected + 1 < count)
         project.SelectFrame(selected + 1);
     ImGui::SameLine();
-    if (ImGui::Button("Insert") && !playback && !frameInFlight) project.InsertFrame(selected);
+    if (ImGui::Button("Insert")) project.InsertFrame(selected);
     ImGui::SameLine();
-    if (ImGui::Button("Delete") && !playback && !frameInFlight) project.DeleteFrame(selected);
+    if (ImGui::Button("Delete")) project.DeleteFrame(selected);
+    ImGui::EndDisabled();
     ImGui::SameLine();
     if (!playback && !frameInFlight) {
         if (ImGui::Button("Play from selected frame")) {
