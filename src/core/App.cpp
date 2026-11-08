@@ -1,6 +1,7 @@
 #include "App.h"
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <iostream>
@@ -220,20 +221,58 @@ void App::RenderTimeline() {
     ImGui::Separator();
     ImGui::TextWrapped("%s", connectionStatus.c_str());
     ImGui::TextDisabled("Select a frame to edit its inputs in the Input Editor. Button states and stick coordinates are previewed below.");
+    static constexpr std::array<std::pair<const char*, bool ControllerState::*>, 14> buttonColumns{{
+        {"A", &ControllerState::a}, {"B", &ControllerState::b},
+        {"Z", &ControllerState::z}, {"Start", &ControllerState::start},
+        {"L", &ControllerState::l}, {"R", &ControllerState::r},
+        {"D-Up", &ControllerState::dUp}, {"D-Down", &ControllerState::dDown},
+        {"D-Left", &ControllerState::dLeft}, {"D-Right", &ControllerState::dRight},
+        {"C-Up", &ControllerState::cUp}, {"C-Down", &ControllerState::cDown},
+        {"C-Left", &ControllerState::cLeft}, {"C-Right", &ControllerState::cRight}
+    }};
     const auto start = selected > 12 ? selected - 12 : 0;
     const auto end = std::min(count, start + 40);
-    ImGui::BeginChild("FrameStrip", ImVec2(0, 0), true);
-    for (std::size_t i = start; i < end; ++i) {
-        ImGui::PushID(static_cast<int>(i));
-        const auto label = std::string(i == selected ? "> Frame " : "  Frame ") + std::to_string(i);
-        ImGui::BeginDisabled(playback || frameInFlight);
-        if (ImGui::Selectable(label.c_str(), i == selected, 0, ImVec2(112, 30)))
-            project.SelectFrame(i);
-        ImGui::EndDisabled();
-        ImGui::SameLine();
-        const auto summary = DescribeController(project.GetFrame(i).controller);
-        ImGui::TextUnformatted(summary.c_str());
-        ImGui::PopID();
+    ImGui::TextDisabled("Piano Roll: columns are controller inputs; each row is one frame. Click a cell to toggle an input.");
+    ImGui::BeginChild("PianoRoll", ImVec2(0, 0), true);
+    if (ImGui::BeginTable("PianoRollTable", 17,
+        ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+        ImGuiTableFlags_ScrollX | ImGuiTableFlags_SizingFixedFit |
+        ImGuiTableFlags_Resizable)) {
+        ImGui::TableSetupColumn("Frame", ImGuiTableColumnFlags_WidthFixed, 76.0f);
+        for (const auto& column : buttonColumns)
+            ImGui::TableSetupColumn(column.first, ImGuiTableColumnFlags_WidthFixed, 48.0f);
+        ImGui::TableSetupColumn("Stick X", ImGuiTableColumnFlags_WidthFixed, 64.0f);
+        ImGui::TableSetupColumn("Stick Y", ImGuiTableColumnFlags_WidthFixed, 64.0f);
+        ImGui::TableHeadersRow();
+        for (std::size_t i = start; i < end; ++i) {
+            auto& controller = project.GetFrame(i).controller;
+            ImGui::PushID(static_cast<int>(i));
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::BeginDisabled(playback || frameInFlight);
+            const auto frameLabel = std::string(i == selected ? "> " : "") + std::to_string(i + 1);
+            if (ImGui::Selectable(frameLabel.c_str(), i == selected, ImGuiSelectableFlags_SpanAllColumns))
+                project.SelectFrame(i);
+            ImGui::EndDisabled();
+            ImGui::BeginDisabled(playback || frameInFlight);
+            for (std::size_t column = 0; column < buttonColumns.size(); ++column) {
+                ImGui::TableSetColumnIndex(static_cast<int>(column + 1));
+                ImGui::PushID(static_cast<int>(column));
+                ImGui::Checkbox("##pressed", &(controller.*(buttonColumns[column].second)));
+                ImGui::PopID();
+            }
+            ImGui::TableSetColumnIndex(15);
+            int stickX = controller.stickX;
+            if (ImGui::SetNextItemWidth(58.0f), ImGui::InputInt("##stickx", &stickX, 0, 0))
+                controller.stickX = static_cast<std::int8_t>(std::clamp(stickX, -128, 127));
+            ImGui::TableSetColumnIndex(16);
+            int stickY = controller.stickY;
+            if (ImGui::SetNextItemWidth(58.0f), ImGui::InputInt("##sticky", &stickY, 0, 0))
+                controller.stickY = static_cast<std::int8_t>(std::clamp(stickY, -128, 127));
+            ImGui::EndDisabled();
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
     }
     ImGui::EndChild();
 }
