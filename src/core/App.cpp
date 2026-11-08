@@ -74,6 +74,10 @@ void App::HandleEvents() {
 }
 void App::Update() {
     if (!connection.IsConnected()) {
+        if (singleStepRequested) {
+            singleStepRequested = false;
+            connectionStatus = "Connection lost before the single frame step completed.";
+        }
         if (frameInFlight) {
             playback = false;
             frameInFlight = false;
@@ -82,7 +86,7 @@ void App::Update() {
         }
         return;
     }
-    if (!playback && !frameInFlight) return;
+    if (!playback && !frameInFlight && !singleStepRequested) return;
     if (frameInFlight) {
         std::uint64_t acknowledged = 0;
         if (connection.PollAcknowledgement(acknowledged)) {
@@ -97,7 +101,10 @@ void App::Update() {
             if (project.GetSelectedFrame() + 1 < project.GetFrameCount())
                 project.SelectFrame(project.GetSelectedFrame() + 1);
 
-            if (stopAfterAck) {
+            if (singleStepRequested) {
+                singleStepRequested = false;
+                connectionStatus = "One frame input poll acknowledged. Ready for the next step.";
+            } else if (stopAfterAck) {
                 stopAfterAck = false;
                 playback = false;
                 connectionStatus = "Playback stopped safely after the in-flight frame was acknowledged.";
@@ -108,7 +115,7 @@ void App::Update() {
         }
         return;
     }
-    if (!playback) return;
+    if (!playback && !singleStepRequested) return;
 
     const auto frame = project.GetSelectedFrame();
     const auto& state = project.GetFrame(frame).controller;
@@ -196,7 +203,14 @@ void App::RenderTimeline() {
     if (ImGui::Button("Delete")) project.DeleteFrame(selected);
     ImGui::EndDisabled();
     ImGui::SameLine();
-    if (!playback && !frameInFlight) {
+    if (!playback && !frameInFlight && !singleStepRequested) {
+        if (ImGui::Button("Step Frame")) {
+            if (connection.IsConnected()) {
+                singleStepRequested = true;
+                connectionStatus = "Sending one frame; waiting for its input-poll acknowledgement.";
+            } else connectionStatus = "Connect to the Mupen64Plus plugin first.";
+        }
+        ImGui::SameLine();
         if (ImGui::Button("Play from selected frame")) {
             if (connection.IsConnected()) {
                 playback = true;
