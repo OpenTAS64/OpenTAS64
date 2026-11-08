@@ -15,9 +15,11 @@ OpenTAS64 is a standalone application for creating, editing, and analyzing Ninte
 - Native `.otas` project save/load with versioned format
 - Mupen64Plus 2.x network input plugin
 - Local TCP connection between the editor and plugin
-- Live selected-frame controller state forwarding to controller port 1
+- Protocol v2 lockstep playback with one input frame in flight
+- Input-poll acknowledgements from the Mupen64Plus GetKeys callback
+- Safe stop handling that drains the in-flight frame before stopping
 
-The connection currently forwards the selected frame's state as a live controller state. Frame-accurate playback, emulator pause/reset/frame advance, movie conversion, and acknowledgements are not implemented yet.
+The acknowledgement confirms that the emulator's input callback consumed the frame. It does **not** prove that the corresponding video frame finished rendering or that the core's internal frame counter matches the TAS frame number. Exact rendered-frame synchronization still needs a cooperating core/video-plugin callback.
 
 ## Mupen64Plus connection
 
@@ -35,8 +37,9 @@ The plugin listens only on `127.0.0.1:6464`. See [plugins/mupen64plus-input/READ
 | Offline Input Editor | ✅ Implemented |
 | Frame Timeline | ✅ Implemented |
 | Native Project Save / Load | ✅ Implemented |
-| Mupen64Plus Input Plugin | 🧪 Initial bridge |
-| Live Controller Forwarding | 🧪 Initial bridge |
+| Mupen64Plus Input Plugin | 🧪 Connected; input acceptance pending verification |
+| Lockstep Input Playback | 🧪 Input-poll acknowledged |
+| Rendered-frame synchronization | ⏳ Needs emulator-side frame-complete hook |
 | Piano Roll | ⏳ Planned |
 | Frame-Accurate TAS Playback | ⏳ Planned |
 | Emulator Frame Advance / Pause | ⏳ Planned |
