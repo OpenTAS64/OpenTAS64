@@ -113,7 +113,15 @@ def main():
     if kind == "unsupported":
         print(f"Automatic setup does not support {name}.")
         return 1
-    if not confirm(name):
+    try:
+        accepted = confirm(name)
+    except EOFError:
+        print("\nSetup cancelled before installation. No changes were made.")
+        return 0
+    except KeyboardInterrupt:
+        print("\nSetup cancelled before installation. No changes were made.")
+        return 130
+    if not accepted:
         print("Setup cancelled. No changes were made.")
         return 0
     try:
@@ -135,6 +143,9 @@ def main():
         print(f"\nSETUP FAILED: {exc}", file=sys.stderr)
         print("Resolve the requirement above and run the installer again.", file=sys.stderr)
         return 1
+    except KeyboardInterrupt:
+        print("\nSetup interrupted. Run the installer again to continue.", file=sys.stderr)
+        return 130
     print("\nOpenTAS64 built successfully.")
     print(f"Build directory: {BUILD}")
     print("Launch: build\\Release\\OpenTAS64.exe" if kind == "windows" else "./build/OpenTAS64")

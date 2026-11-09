@@ -2,7 +2,7 @@
 
 This is the emulator-side input bridge for Mupen64Plus 2.x. Mupen64Plus loads the shared library as its **Input** plugin. The plugin opens a TCP listener on `127.0.0.1:6464`; it does not listen on external network interfaces.
 
-The desktop application connects to this local endpoint and sends controller states. The plugin's `GetKeys` callback returns the queued state to the emulator. If the editor disconnects, all controller states are released.
+The desktop application connects to this local endpoint and sends controller states. The plugin's `GetKeys` callback returns the queued state to the emulator. If the editor disconnects, all controller states are released and the input callback stops waiting for network frames, allowing the emulator to continue with neutral input. A later editor connection can resume frame delivery.
 
 ## Build
 

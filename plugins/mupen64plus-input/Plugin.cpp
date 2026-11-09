@@ -53,6 +53,7 @@ std::array<ControllerState, 4> gControllers;
 std::atomic<bool> gRunning{false};
 std::thread gServerThread;
 std::atomic<Socket> gActiveClient{kInvalidSocket};
+std::atomic<bool> gClientConnected{false};
 std::mutex gFrameMutex;
 std::condition_variable gFrameChanged;
 PendingFrame gPending;
@@ -113,6 +114,8 @@ void ResetFrameQueue() {
 }
 void HandleClient(Socket client) {
     gActiveClient.store(client);
+    gClientConnected.store(true);
+    gFrameChanged.notify_all();
     std::uint8_t packet[kFramePacketSize]{};
     while (gRunning.load() && ReceiveExact(client, packet, sizeof(packet))) {
         if (std::memcmp(packet, "OT64", 4) != 0 || packet[4] != 2 || packet[5] > 3)
@@ -139,6 +142,8 @@ void HandleClient(Socket client) {
         WriteU64BE(ack + 6, frame.number);
         if (!SendExact(client, ack, sizeof(ack))) break;
     }
+    gClientConnected.store(false);
+    gFrameChanged.notify_all();
     ResetControllers();
     ResetFrameQueue();
     gActiveClient.store(kInvalidSocket);
@@ -194,6 +199,7 @@ void ServerLoop() {
 }
 void StopServer() {
     gRunning.store(false);
+    gClientConnected.store(false);
     gFrameChanged.notify_all();
     Socket client = gActiveClient.load();
     if (client != kInvalidSocket) {
@@ -264,9 +270,10 @@ void OT64_CALL GetKeys(int control, OT64_BUTTONS* keys) {
         // Holding the emulator at its controller poll provides a real pause
         // gate: the core cannot advance until the editor supplies the next frame.
         gFrameChanged.wait(lock, [] {
-            return !gRunning.load() || (gPending.valid && gPending.port == 0);
+            return !gRunning.load() || !gClientConnected.load() ||
+                   (gPending.valid && gPending.port == 0);
         });
-        if (!gRunning.load()) return;
+        if (!gRunning.load() || !gClientConnected.load()) return;
         gControllers[0].buttons.store(gPending.buttons & kButtonMask);
         gControllers[0].stickX.store(gPending.x);
         gControllers[0].stickY.store(gPending.y);

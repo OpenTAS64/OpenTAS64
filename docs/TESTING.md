@@ -30,7 +30,8 @@ cmake --build build --config Release --target OpenTAS64MupenInput -j2
 6. Start playback and request Pause. Confirm the current in-flight input is acknowledged and no further TAS frame is sent until playback resumes.
 7. Resume playback and confirm frames continue from the expected timeline position.
 8. Use Step Frame repeatedly and observe whether the game advances consistently by one input poll per step.
-9. Disconnect the editor and confirm the plugin and emulator remain usable.
+9. Disconnect the editor while playback is paused and confirm the waiting input callback wakes, controller state returns to neutral, and the emulator remains responsive.
+10. Reconnect the editor and confirm frame delivery can resume without restarting the emulator.
 
 ## Important limitations
 

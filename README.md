@@ -22,6 +22,7 @@ OpenTAS64 is a standalone desktop application for creating, editing, and playing
 - Single-step control that sends one frame and waits for its input-poll acknowledgement
 - Emulator pause gate at controller-0 input polls
 - Safe pause handling that drains the in-flight frame before pausing
+- Disconnect handling that releases controller state and wakes a waiting input callback
 
 ## Synchronization status
 
