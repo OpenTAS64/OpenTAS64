@@ -4,7 +4,7 @@
 
 OpenTAS64 is a standalone desktop application for creating, editing, and playing back Nintendo 64 Tool-Assisted Speedrun (TAS) input projects. It connects to existing emulators instead of replacing them.
 
-> **🚧 Status:** Early development. The desktop editor, native project format, vertical Piano Roll, Mupen64Plus input plugin, and input-poll-based single-step/lockstep controls are implemented. Actual input acceptance and gameplay synchronization still need testing with a running game.
+> **🚧 Status:** Early development. The desktop editor, native project format, vertical Piano Roll, Mupen64Plus input plugin, and input-poll-based single-step/lockstep controls are implemented. The initial timeline contains 120 editable frames. The new pause gate and multi-frame playback are awaiting runtime verification.
 
 ## Implemented
 
@@ -20,7 +20,7 @@ OpenTAS64 is a standalone desktop application for creating, editing, and playing
 - Protocol v2 lockstep input delivery: one frame in flight at a time
 - Input-poll acknowledgements from the Mupen64Plus `GetKeys` callback
 - Single-step control that sends one frame and waits for its input-poll acknowledgement
-- Emulator pause gate at each controller poll
+- Emulator pause gate at controller-0 input polls
 - Safe pause handling that drains the in-flight frame before pausing
 
 ## Synchronization status
@@ -52,7 +52,7 @@ The plugin listens only on `127.0.0.1:6464`. See [plugin setup](plugins/mupen64p
 | Lockstep Input Delivery | 🧪 Input-poll acknowledged |
 | Step Frame | 🧪 One input poll per step; rendered-frame sync not guaranteed |
 | Rendered-frame synchronization | ⏳ Needs emulator-side frame-complete hook |
-| Emulator Pause between input polls | 🧪 Implemented; needs runtime verification |
+| Emulator Pause between controller-0 input polls | 🧪 Implemented; needs runtime verification |
 | Emulator Reset / Native Frame Advance | ⏳ Planned |
 | Savestate Manager | ⏳ Planned |
 | RAM Watch / Search | ⏳ Planned |
@@ -79,6 +79,7 @@ ctest --test-dir build --output-on-failure
 - [Native project format](docs/PROJECT_FORMAT.md)
 - [Connection protocol](docs/CONNECTION_PROTOCOL.md)
 - [Mupen64Plus plugin setup](plugins/mupen64plus-input/README.md)
+- [Runtime testing checklist](docs/TESTING.md)
 
 ## License
 

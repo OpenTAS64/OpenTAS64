@@ -4,7 +4,7 @@
 
 The desktop application connects to the Mupen64Plus input plugin over loopback TCP on `127.0.0.1:6464`. Protocol v2 uses strict lockstep: the editor sends one input frame and waits for the plugin's acknowledgement before sending the next frame. No frame backlog is allowed.
 
-The same request/acknowledgement mechanism is used by normal lockstep playback and the **Step Frame** control. The plugin blocks Mupen64Plus in the controller-0 `GetKeys` callback when no frame is queued; this keeps the emulator paused at the next input poll until the editor sends another frame. Step Frame sends one input frame and waits for one input-poll acknowledgement before completing the step.
+The same request/acknowledgement mechanism is used by normal lockstep playback and the **Step Frame** control. The plugin waits in the controller-0 `GetKeys` callback when no frame is queued. The editor's pause request stops scheduling new frames and allows an in-flight frame acknowledgement to finish; Mupen64Plus then waits at the next controller-0 input poll until another frame is sent. This is an input-poll gate, not a general emulator pause API, and is awaiting runtime verification. Step Frame sends one input frame and waits for one input-poll acknowledgement before completing the step.
 
 ## Frame packet (18 bytes)
 

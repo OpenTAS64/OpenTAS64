@@ -21,7 +21,7 @@ The plugin binds exclusively to `127.0.0.1`; it is not exposed to other machines
 
 The timeline and vertical Piano Roll edit the same emulator-independent frame data. The Piano Roll displays controller buttons as columns and input frames as rows, with analog stick X/Y values available for each frame.
 
-The timeline starts with 120 editable frames. Lockstep playback sends one input frame at a time and waits for its input-poll acknowledgement. The plugin's controller-0 callback blocks at the next poll until another frame is supplied, so pausing leaves the emulator stopped between polls. Step Frame uses the same mechanism for a single frame. It is therefore a single **input-poll step**, not yet a guarantee that the corresponding rendered video frame has completed.
+The timeline starts with 120 editable frames. Lockstep playback sends one input frame at a time and waits for its input-poll acknowledgement. The plugin's controller-0 callback waits at the next poll until another frame is supplied. The UI pause request stops scheduling further frames and lets any in-flight acknowledgement finish; the emulator then waits at the next controller-0 poll. This behavior still requires runtime verification. Step Frame uses the same mechanism for a single frame. It is therefore a single **input-poll step**, not yet a guarantee that the corresponding rendered video frame has completed.
 
 ## Design rules
 
@@ -39,7 +39,7 @@ The standard Mupen64Plus input-plugin callback confirms when input is polled, bu
 
 ## Next steps
 
-- Verify actual controller input delivery and Step Frame behavior in a running game.
+- Verify controller input delivery, multi-frame playback, pause/resume, and repeated Step Frame behavior in a running game.
 - Investigate a supported emulator-side frame-complete callback for stronger synchronization.
-- Add emulator control integration for pause, reset, and savestates.
+- Investigate core-level pause/reset and savestate integration for control beyond the controller-0 input-poll gate.
 - Expand movie import/export and memory inspection features.

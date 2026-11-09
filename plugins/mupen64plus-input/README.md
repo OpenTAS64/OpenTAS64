@@ -19,6 +19,8 @@ The output is a platform shared library (DLL on Windows, shared object on Linux)
 
 See [the protocol specification](../../docs/CONNECTION_PROTOCOL.md). Protocol v2 queues exactly one TAS input frame at a time. The plugin applies that frame when Mupen64Plus calls the input plugin's `GetKeys` callback, then sends an acknowledgement to the editor.
 
+When no frame is queued, the controller-0 callback waits for the next input. During pause, the editor stops scheduling frames and drains any in-flight acknowledgement; the emulator then remains waiting at the next controller-0 poll. This is an input-plugin-level gate, not a general Mupen64Plus pause API, and must be verified in a running game.
+
 The editor uses this acknowledgement for lockstep playback and its **Step Frame** control. One acknowledgement means one input-poll callback consumed the input. It does **not** confirm that a complete video frame has rendered. Exact video-frame synchronization requires an emulator core or video-plugin callback. A TCP packet arriving does not itself guarantee a particular emulated frame.
 
 Actual in-game input acceptance and timing should be verified with a running game.
