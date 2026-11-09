@@ -59,6 +59,18 @@ The plugin listens only on `127.0.0.1:6464`. See [plugin setup](plugins/mupen64p
 | Lua Scripting | ⏳ Planned |
 | Movie Import / Export | ⏳ Planned |
 
+## Cross-platform installer
+
+Run the Python bootstrapper from the repository root. It detects the operating system, asks for confirmation, installs supported dependencies, initializes submodules, builds the application and input plugin, and runs tests.
+
+```bash
+python3 install.py
+```
+
+On Windows, use `py install.py`.
+
+See [Installation Guide](docs/INSTALLATION.md) for supported platforms and requirements.
+
 ## Build requirements
 
 - C++17 compiler
