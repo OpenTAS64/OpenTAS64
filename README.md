@@ -11,7 +11,7 @@ OpenTAS64 is a standalone desktop application for creating, editing, and playing
 - C++17 desktop application using SDL2 and Dear ImGui
 - Emulator-independent controller and input-frame data model
 - Offline editor for N64 buttons and analog stick X/Y
-- Frame timeline with frame selection, insertion, and deletion
+- 120-frame initial timeline with frame selection, insertion, and deletion
 - Vertical Piano Roll with button columns and one row per frame
 - Direct editing of button states and analog stick values in the Piano Roll
 - Native `.otas` project save/load with versioned format
@@ -20,7 +20,8 @@ OpenTAS64 is a standalone desktop application for creating, editing, and playing
 - Protocol v2 lockstep input delivery: one frame in flight at a time
 - Input-poll acknowledgements from the Mupen64Plus `GetKeys` callback
 - Single-step control that sends one frame and waits for its input-poll acknowledgement
-- Safe stop handling that drains the in-flight frame before stopping
+- Emulator pause gate at each controller poll
+- Safe pause handling that drains the in-flight frame before pausing
 
 ## Synchronization status
 
@@ -51,7 +52,8 @@ The plugin listens only on `127.0.0.1:6464`. See [plugin setup](plugins/mupen64p
 | Lockstep Input Delivery | 🧪 Input-poll acknowledged |
 | Step Frame | 🧪 One input poll per step; rendered-frame sync not guaranteed |
 | Rendered-frame synchronization | ⏳ Needs emulator-side frame-complete hook |
-| Emulator Pause / Reset / Native Frame Advance | ⏳ Planned |
+| Emulator Pause between input polls | 🧪 Implemented; needs runtime verification |
+| Emulator Reset / Native Frame Advance | ⏳ Planned |
 | Savestate Manager | ⏳ Planned |
 | RAM Watch / Search | ⏳ Planned |
 | Lua Scripting | ⏳ Planned |

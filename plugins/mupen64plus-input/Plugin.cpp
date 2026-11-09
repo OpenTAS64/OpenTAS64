@@ -259,17 +259,21 @@ void OT64_CALL GetKeys(int control, OT64_BUTTONS* keys) {
     keys->Value = 0;
     if (control < 0 || control >= static_cast<int>(gControllers.size())) return;
 
-    {
-        std::lock_guard<std::mutex> lock(gFrameMutex);
-        if (gPending.valid && gPending.port == static_cast<std::uint8_t>(control)) {
-            gControllers[control].buttons.store(gPending.buttons & kButtonMask);
-            gControllers[control].stickX.store(gPending.x);
-            gControllers[control].stickY.store(gPending.y);
-            gAckFrame = gPending.number;
-            gPending.valid = false;
-            gAckReady = true;
-            gFrameChanged.notify_all();
-        }
+    if (control == 0) {
+        std::unique_lock<std::mutex> lock(gFrameMutex);
+        // Holding the emulator at its controller poll provides a real pause
+        // gate: the core cannot advance until the editor supplies the next frame.
+        gFrameChanged.wait(lock, [] {
+            return !gRunning.load() || (gPending.valid && gPending.port == 0);
+        });
+        if (!gRunning.load()) return;
+        gControllers[0].buttons.store(gPending.buttons & kButtonMask);
+        gControllers[0].stickX.store(gPending.x);
+        gControllers[0].stickY.store(gPending.y);
+        gAckFrame = gPending.number;
+        gPending.valid = false;
+        gAckReady = true;
+        gFrameChanged.notify_all();
     }
     const auto buttons = gControllers[control].buttons.load();
     const auto x = static_cast<std::uint8_t>(gControllers[control].stickX.load());

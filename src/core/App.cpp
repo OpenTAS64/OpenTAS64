@@ -37,6 +37,7 @@ std::string DescribeController(const ControllerState& c)
 
 bool App::Init()
 {
+    project.EnsureFrame(119);
     SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::cerr << "SDL_Init Error: " << SDL_GetError() << std::endl;
@@ -156,7 +157,7 @@ void App::CreateNewProject() {
         return;
     }
     playback = false; stopAfterAck = false;
-    project.Clear(); project.SetName("Untitled TAS");
+    project.Clear(); project.EnsureFrame(119); project.SetName("Untitled TAS");
     std::strncpy(projectPath, "project.otas", sizeof(projectPath) - 1);
     projectPath[sizeof(projectPath) - 1] = '\0';
     fileStatus = "New project created. Save it to keep your changes."; fileStatusOk = true;
@@ -220,16 +221,16 @@ void App::RenderTimeline() {
         }
     } else if (stopAfterAck) {
         ImGui::BeginDisabled();
-        ImGui::Button("Stopping...");
+        ImGui::Button("Pausing...");
         ImGui::EndDisabled();
-    } else if (ImGui::Button("Stop")) {
+    } else if (ImGui::Button("Pause")) {
         if (frameInFlight) {
             stopAfterAck = true;
             playback = false;
-            connectionStatus = "Stop requested; waiting for the current input frame to be acknowledged.";
+            connectionStatus = "Pause requested; the current input poll will finish before the emulator pauses.";
         } else {
             playback = false;
-            connectionStatus = "Playback stopped.";
+            connectionStatus = "Playback paused.";
         }
     }
     ImGui::Separator();
@@ -244,9 +245,8 @@ void App::RenderTimeline() {
         {"C-Up", &ControllerState::cUp}, {"C-Down", &ControllerState::cDown},
         {"C-Left", &ControllerState::cLeft}, {"C-Right", &ControllerState::cRight}
     }};
-    const auto start = selected > 12 ? selected - 12 : 0;
-    const auto end = std::min(count, start + 40);
-    ImGui::TextDisabled("Piano Roll: columns are controller inputs; each row is one frame. Click a cell to toggle an input.");
+
+    ImGui::TextDisabled("Piano Roll: all frames are listed. Select a row to edit it; click a cell to toggle an input.");
     ImGui::BeginChild("PianoRoll", ImVec2(0, 0), true);
     if (ImGui::BeginTable("PianoRollTable", 17,
         ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
@@ -258,7 +258,7 @@ void App::RenderTimeline() {
         ImGui::TableSetupColumn("Stick X", ImGuiTableColumnFlags_WidthFixed, 64.0f);
         ImGui::TableSetupColumn("Stick Y", ImGuiTableColumnFlags_WidthFixed, 64.0f);
         ImGui::TableHeadersRow();
-        for (std::size_t i = start; i < end; ++i) {
+        for (std::size_t i = 0; i < count; ++i) {
             auto& controller = project.GetFrame(i).controller;
             ImGui::PushID(static_cast<int>(i));
             ImGui::TableNextRow();

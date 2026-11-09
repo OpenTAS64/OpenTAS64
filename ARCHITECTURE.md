@@ -13,7 +13,7 @@ OpenTAS64 separates TAS data, persistence, the desktop UI, and emulator integrat
 
 ## Connection design
 
-The editor sends versioned, frame-indexed controller packets over loopback TCP. Protocol v2 permits only one frame in flight. The Mupen64Plus plugin receives packets on a worker thread and makes the queued state available to the emulator's normal `GetKeys` callback. The callback latches the input and the plugin then acknowledges that input poll. The editor waits for the acknowledgement before sending the next frame.
+The editor sends versioned, frame-indexed controller packets over loopback TCP. Protocol v2 permits only one frame in flight. The Mupen64Plus plugin receives packets on a worker thread and makes the queued state available to the emulator's normal `GetKeys` callback. The callback waits for the next controller-0 frame, latches it, and acknowledges that input poll. With no queued frame, the emulator remains blocked at that poll. The editor waits for the acknowledgement before sending the next frame.
 
 The plugin binds exclusively to `127.0.0.1`; it is not exposed to other machines on the network. A disconnect resets controller state to neutral.
 
@@ -21,13 +21,13 @@ The plugin binds exclusively to `127.0.0.1`; it is not exposed to other machines
 
 The timeline and vertical Piano Roll edit the same emulator-independent frame data. The Piano Roll displays controller buttons as columns and input frames as rows, with analog stick X/Y values available for each frame.
 
-Lockstep playback sends one input frame at a time and waits for its input-poll acknowledgement. Step Frame uses the same mechanism for a single frame. It is therefore a single **input-poll step**, not yet a guarantee that the corresponding rendered video frame has completed.
+The timeline starts with 120 editable frames. Lockstep playback sends one input frame at a time and waits for its input-poll acknowledgement. The plugin's controller-0 callback blocks at the next poll until another frame is supplied, so pausing leaves the emulator stopped between polls. Step Frame uses the same mechanism for a single frame. It is therefore a single **input-poll step**, not yet a guarantee that the corresponding rendered video frame has completed.
 
 ## Design rules
 
 1. TAS data must not depend on SDL, ImGui, or a specific emulator.
 2. The UI edits the model through its public interface.
-3. Network I/O must never block the emulator's controller polling callback.
+3. Network I/O runs on the plugin worker thread; the controller-0 callback may wait on a condition variable for the next queued input, but performs no socket I/O.
 4. Emulator-specific behavior belongs behind an adapter/plugin boundary.
 5. Frame indices are zero-based internally.
 6. Every project contains at least one editable frame.
