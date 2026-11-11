@@ -4,7 +4,7 @@
 
 OpenTAS64 is a standalone desktop application for creating, editing, and playing back Nintendo 64 Tool-Assisted Speedrun (TAS) input projects. It connects to existing emulators instead of replacing them.
 
-**[🌐 Project website](https://opentas64.github.io/OpenTAS64/)** · **[Source code](https://github.com/OpenTAS64/OpenTAS64)**
+**[🌐 Project website](https://opentas64.github.io/OpenTAS64/)**
 
 > **🚧 Status:** Early development. The desktop editor, native project format, vertical Piano Roll, Mupen64Plus input plugin, and input-poll-based single-step/lockstep controls are implemented. The initial timeline contains 120 editable frames. The new pause gate and multi-frame playback are awaiting runtime verification.
 
