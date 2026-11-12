@@ -5,3 +5,4 @@
 ## Contributors
 
 - **Frozican** — Project creator and lead developer
+- **Juz187** — Developer
