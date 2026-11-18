@@ -1,10 +1,10 @@
-# Emulator
+# Emulator Integration
 
-Contains the emulator bridge.
+This directory is currently reserved for future emulator-control abstractions.
 
-Responsibilities:
-- Connect to Mupen64Plus
-- Read and write controller input
-- Frame advance
-- Save states
-- Emulator control
+The implemented Mupen64Plus integration currently lives in:
+
+- `src/network/` — desktop-side TCP client.
+- `plugins/mupen64plus-input/` — emulator-side Mupen64Plus input plugin.
+
+Current capabilities include controller input delivery, input-poll acknowledgements, and a reset request. Rewind is performed by resetting and replaying TAS inputs from frame zero; native savestate control and rendered-frame synchronization are not implemented here yet.

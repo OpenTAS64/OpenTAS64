@@ -1,11 +1,15 @@
-# UI
+# User Interface
 
-Contains all user interface code for OpenTAS64.
+The desktop interface is currently rendered by Dear ImGui from the application core in `src/core/App.cpp`.
 
-Planned:
-- Main window
-- Docking layout
-- Piano Roll
-- Timeline
-- Controller editor
-- Menus
+Implemented UI areas include:
+
+- Project creation, loading, and saving.
+- Controller button and analog stick input editor.
+- Frame timeline with previous/next, insert, and delete controls.
+- Vertical Piano Roll input visualization and editing.
+- Plugin connection status.
+- Single input-poll step, lockstep playback, and pause controls.
+- **Restart Emulator** and **Rewind to selected** controls.
+
+A dedicated docking layout, full menu system, and other planned UI areas are not described as implemented features yet.

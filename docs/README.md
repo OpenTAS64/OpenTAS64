@@ -1,7 +1,8 @@
 # OpenTAS64 Documentation
 
-- [Architecture](../ARCHITECTURE.md) — application modules, editor design, and synchronization limitations.
-- [Connection protocol](CONNECTION_PROTOCOL.md) — TCP packet format, acknowledgements, lockstep playback, and Step Frame semantics.
+- [Architecture](../ARCHITECTURE.md) — repository modules, direct plugin connection, playback, restart, rewind, and synchronization limitations.
+- [Connection protocol](CONNECTION_PROTOCOL.md) — TCP frame packets, input-poll acknowledgements, protocol-v3 reset control, and lockstep delivery.
+- [Installation](INSTALLATION.md) — first-time setup, supported platforms, manual build, and in-place updates with `update.py`.
 - [Native project format](PROJECT_FORMAT.md) — versioned `.otas` file structure and validation.
-- [Mupen64Plus input plugin setup](../plugins/mupen64plus-input/README.md) — build and emulator configuration.
-- [Runtime testing checklist](TESTING.md) — manual checks for timeline editing, pause/resume, and frame stepping.
+- [Mupen64Plus input plugin setup](../plugins/mupen64plus-input/README.md) — build, configure, connect, restart, and rewind.
+- [Runtime testing checklist](TESTING.md) — build tests and manual emulator checks for stepping, playback, restart, and replay-based rewind.

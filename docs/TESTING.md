@@ -1,40 +1,59 @@
 # OpenTAS64 Runtime Testing Checklist
 
-The pause gate and initial multi-frame timeline have been implemented, but have not yet been verified in a running game. Complete these checks before treating them as stable.
+This checklist separates automated build tests from manual checks that require a running Mupen64Plus instance and game. Do not treat an input-poll acknowledgement as proof of a completed rendered frame.
 
-## Build
+## Build and automated tests
 
-From the repository root:
+For an existing checkout, use the in-place updater:
 
 ```bash
-git pull
+python3 update.py
+```
+
+On Windows:
+
+```powershell
+py update.py
+```
+
+The updater performs a fast-forward-only update, refreshes submodules, configures/builds the existing CMake tree, and runs CTest. It does not reinstall system dependencies. See [Installation and updating](INSTALLATION.md).
+
+For a manual build:
+
+```bash
 git submodule update --init --recursive
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --config Release -j2
-ctest --test-dir build --output-on-failure
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+cmake --build build --config Release --parallel 2
+ctest --test-dir build -C Release --output-on-failure
 ```
 
-Build the input plugin if it is not included in the default build:
+If needed, build the input plugin target explicitly:
 
 ```bash
-cmake --build build --config Release --target OpenTAS64MupenInput -j2
+cmake --build build --config Release --target OpenTAS64MupenInput --parallel 2
 ```
 
-## Manual checks
+## Manual emulator checks
 
-1. Start Mupen64Plus with the OpenTAS64 input plugin selected, then start OpenTAS64 and connect.
-2. Confirm the new project opens with 120 editable timeline frames.
-3. Select different timeline rows and confirm the Input Editor follows the selected frame.
-4. Change button and stick values on multiple rows; confirm each row retains its own values when switching between frames.
-5. Insert and delete frames; confirm selection and neighboring input data remain consistent.
-6. Start playback and request Pause. Confirm the current in-flight input is acknowledged and no further TAS frame is sent until playback resumes.
-7. Resume playback and confirm frames continue from the expected timeline position.
-8. Use Step Frame repeatedly and observe whether the game advances consistently by one input poll per step.
-9. Disconnect the editor while playback is paused and confirm the waiting input callback wakes, controller state returns to neutral, and the emulator remains responsive.
-10. Reconnect the editor and confirm frame delivery can resume without restarting the emulator.
+1. Start Mupen64Plus with the OpenTAS64 input plugin selected and a game loaded.
+2. Start OpenTAS64 and connect directly to the plugin. No launcher integration is used.
+3. Confirm a new project starts with 120 editable timeline frames.
+4. Select different timeline rows and confirm the Input Editor follows the selected frame.
+5. Change button and stick values on multiple rows; confirm each row retains its own values when switching frames.
+6. Insert and delete frames; confirm selection and neighboring input data remain consistent.
+7. Use **Step Frame** repeatedly. Confirm each command is acknowledged by one controller-0 input poll. Separately observe actual game/video progression; do not assume the acknowledgement means a rendered frame completed.
+8. Start playback and request **Pause**. Confirm the current in-flight input is acknowledged and no further TAS frame is sent.
+9. Resume playback and confirm input delivery continues from the expected timeline position.
+10. Use **Restart Emulator** while idle. Confirm Mupen64Plus resets, the editor selects frame 0, and the TAS input data is still present in the project.
+11. Select a frame later in the timeline and use **Rewind to selected**. Confirm the emulator resets and recorded inputs replay from frame zero up to the selected position. Confirm the project data remains unchanged.
+12. Repeat restart and rewind with the exact Mupen64Plus build intended for use. Record crashes, hangs, unexpected game state, or timing differences.
+13. Disconnect while idle and confirm the plugin releases controller state to neutral. Reconnect and verify input delivery resumes.
+14. Save and reload the project after restart/rewind; confirm the recorded frame inputs and selected-frame behavior are retained as expected.
 
 ## Important limitations
 
-- The acknowledgement confirms that Mupen64Plus consumed an input state in its `GetKeys` callback. It does not confirm that a rendered video frame completed.
-- The pause gate waits at the next controller-0 input poll. It is not a core-level pause command and does not guarantee a video-frame boundary.
-- Actual game behavior, pause/resume stability, and timing have not yet been verified. Record any unexpected behavior before making further synchronization changes.
+- The frame acknowledgement confirms that Mupen64Plus consumed an input state in its `GetKeys` callback. It does not confirm that a rendered video frame completed.
+- The pause gate waits at the next controller-0 input poll. It is not a general core-level pause command or a guaranteed video-frame boundary.
+- Rewind currently uses reset plus input replay, not savestates.
+- The plugin requests `M64CMD_RESET` through `CoreDoCommand` from its bridge thread. Runtime behavior depends on the target Mupen64Plus build and must be tested.
+- Automated project tests do not replace these emulator runtime checks.
