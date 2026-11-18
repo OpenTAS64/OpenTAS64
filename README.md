@@ -2,11 +2,11 @@
 
 > **An open-source TAS editor and emulator input bridge for Nintendo 64.**
 
-OpenTAS64 is a standalone desktop application for creating, editing, and playing back Nintendo 64 Tool-Assisted Speedrun (TAS) input projects. It connects to existing emulators instead of replacing them.
+OpenTAS64 is a standalone desktop application for creating, editing, and playing back Nintendo 64 Tool-Assisted Speedrun (TAS) input projects. It connects directly to Mupen64Plus through a dedicated input plugin; the Mupen64Plus Launcher is not part of the connection.
 
 **[🌐 Project website](https://opentas64.github.io/OpenTAS64/)**
 
-> **🚧 Status:** Early development. The desktop editor, native project format, vertical Piano Roll, Mupen64Plus input plugin, and input-poll-based single-step/lockstep controls are implemented. The initial timeline contains 120 editable frames. The new pause gate and multi-frame playback are awaiting runtime verification.
+> **🚧 Status:** Early development. The desktop editor, native project format, vertical Piano Roll, Mupen64Plus input plugin, lockstep input delivery, emulator restart command, and replay-based rewind are implemented. Input acknowledgements are tied to the emulator's controller input poll, not completed video frames.
 
 ## Implemented
 
@@ -18,44 +18,48 @@ OpenTAS64 is a standalone desktop application for creating, editing, and playing
 - Direct editing of button states and analog stick values in the Piano Roll
 - Native .otas project save/load with versioned format
 - Mupen64Plus 2.x network input plugin
-- Local TCP connection between the editor and plugin
-- Protocol v2 lockstep input delivery: one frame in flight at a time
+- Direct local TCP connection between the editor and plugin
+- Lockstep input delivery: one frame in flight at a time
 - Input-poll acknowledgements from the Mupen64Plus GetKeys callback
-- Single-step control that sends one frame and waits for its input-poll acknowledgement
-- Emulator pause gate at controller-0 input polls
-- Safe pause handling that drains the in-flight frame before pausing
-- Disconnect handling that releases controller state and wakes a waiting input callback
+- Single-step control and multi-frame playback
+- Pause handling that drains the in-flight input before pausing
+- **Restart Emulator:** requests a Mupen64Plus reset and returns the editor's selected frame to the beginning
+- **Rewind to selected:** resets the emulator and replays the saved TAS inputs from frame zero to the selected timeline position
+- Rewind/restart keep the TAS project's recorded input data intact
+- In-place updater that refreshes the existing checkout and rebuilds without reinstalling
 
-## Synchronization status
+## Synchronization and rewind notes
 
 The plugin acknowledges a frame after Mupen64Plus calls GetKeys and consumes the queued controller state. OpenTAS64 waits for that acknowledgement before advancing to the next input frame.
 
-This is **not** a rendered-frame acknowledgement. It does not prove that the corresponding video frame has finished rendering or that the emulator's internal frame counter matches the TAS frame number. Therefore, Step Frame currently means **one acknowledged input poll**, not a guaranteed completed video frame. Exact frame synchronization requires a cooperating emulator-core or video-plugin callback.
+This is **not** a rendered-frame acknowledgement. It does not prove that the corresponding video frame has finished rendering or that the emulator's internal frame counter matches the TAS frame number. Step Frame currently means **one acknowledged input poll**, not a guaranteed completed video frame. Exact frame synchronization requires a cooperating emulator-core or video-plugin callback.
 
-The connection and input delivery have been implemented, but real-game input acceptance and timing still require manual verification.
+Rewind currently uses **reset and replay**, not per-frame savestates. The emulator is reset and the recorded TAS inputs are replayed from the beginning until the selected position. Longer rewinds therefore take longer. The project data is preserved.
+
+The reset command is issued through the Mupen64Plus Core API from the plugin's bridge thread. Runtime behavior can depend on the Mupen64Plus build and its thread-safety guarantees. Verify reset and replay with the exact emulator build you use before relying on them for a recording.
 
 ## Mupen64Plus connection
 
 1. Build the OpenTAS64MupenInput target.
 2. Select the resulting shared library as the Mupen64Plus Input Plugin.
 3. Start Mupen64Plus with a ROM.
-4. Open OpenTAS64 and press Connect to plugin in the Connection panel.
+4. Open OpenTAS64 and press **Connect to plugin** in the Connection panel.
 
-The plugin listens only on 127.0.0.1:6464. See [plugin setup](plugins/mupen64plus-input/README.md) and the [connection protocol](docs/CONNECTION_PROTOCOL.md).
+The plugin listens only on `127.0.0.1:6464`. The editor communicates directly with the plugin; no launcher integration is required. See [plugin setup](plugins/mupen64plus-input/README.md) and the [connection protocol](docs/CONNECTION_PROTOCOL.md).
 
 ## Feature status
 
 | Feature | Status |
 |---|:---:|
 | Offline Input Editor | ✅ Implemented |
-| Frame Timeline | ✅ Implemented |
-| Vertical Piano Roll | ✅ Implemented |
+| Frame Timeline and Vertical Piano Roll | ✅ Implemented |
 | Native Project Save / Load | ✅ Implemented |
-| Mupen64Plus Input Plugin | 🧪 Connects; game input still needs verification |
-| Lockstep Input Delivery | 🧪 Input-poll acknowledged |
-| Step Frame | 🧪 One input poll per step; rendered-frame sync not guaranteed |
+| Mupen64Plus Input Plugin | 🧪 Connects; game input needs verification |
+| Lockstep Input Delivery and Step Frame | 🧪 Input-poll acknowledged |
+| Pause and multi-frame playback | 🧪 Needs runtime verification |
+| Emulator Restart | 🧪 Implemented; verify with target core |
+| Rewind to selected (reset + replay) | 🧪 Implemented; verify replay timing |
 | Rendered-frame synchronization | ⏳ Needs emulator-side frame-complete hook |
-| Emulator Reset / Native Frame Advance | ⏳ Planned |
 | Savestate Manager | ⏳ Planned |
 | RAM Watch / Search | ⏳ Planned |
 | Lua Scripting | ⏳ Planned |
@@ -69,7 +73,7 @@ Run the Python bootstrapper from the repository root. It detects the operating s
 python3 install.py
 ~~~
 
-On Windows, use py install.py.
+On Windows, use `py install.py`.
 
 See [Installation Guide](docs/INSTALLATION.md) for supported platforms and requirements.
 
@@ -87,7 +91,7 @@ On Windows:
 py update.py
 ~~~
 
-The updater fast-forwards the existing Git checkout, refreshes its submodules, rebuilds the application and Mupen64Plus input plugin, and runs the tests. It does not install system packages or recreate the installation. It preserves the local `imgui.ini` window layout and leaves untracked `.otas` projects and other user files untouched. Close OpenTAS64 before updating, especially on Windows.
+The updater fast-forwards the existing Git checkout, refreshes its submodules, rebuilds the application and Mupen64Plus input plugin, and runs the tests. It does not reinstall system packages or recreate the installation. It preserves the local `imgui.ini` window layout and leaves untracked `.otas` projects and other user files untouched. Close OpenTAS64 before updating, especially on Windows.
 
 The updater expects the existing Git checkout and build prerequisites from the initial setup. If tracked source files have local modifications, it stops instead of overwriting them.
 
@@ -115,9 +119,9 @@ ctest --test-dir build --output-on-failure
 
 ## Website deployment
 
-The static project website lives in website/ and is deployed by the GitHub Actions workflow in .github/workflows/pages.yml.
+The static project website lives in `website/` and is deployed by the GitHub Actions workflow in `.github/workflows/pages.yml`.
 
-To enable it once, open **Settings → Pages** in the repository and select **GitHub Actions** as the build and deployment source. After that, pushes to main that change website/ deploy the site automatically.
+To enable it once, open **Settings → Pages** in the repository and select **GitHub Actions** as the build and deployment source. After that, pushes to `main` that change `website/` deploy the site automatically.
 
 ## License
 
