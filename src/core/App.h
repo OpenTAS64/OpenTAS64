@@ -23,6 +23,7 @@ private:
     void LoadProject();
     void CreateNewProject();
     void ConnectEmulatorPlugin();
+    void RequestRestart(std::size_t replayFrames);
 
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
@@ -37,5 +38,8 @@ private:
     bool frameInFlight = false;
     bool stopAfterAck = false;
     bool singleStepRequested = false;
+    bool resetPending = false;
+    bool replayAfterReset = false;
+    std::size_t replayTarget = 0;
     std::uint64_t inFlightFrame = 0;
 };

@@ -7,4 +7,6 @@ set_target_properties(OpenTAS64MupenInput PROPERTIES
 )
 if(WIN32)
     target_link_libraries(OpenTAS64MupenInput PRIVATE ws2_32)
+else()
+    target_link_libraries(OpenTAS64MupenInput PRIVATE ${CMAKE_DL_LIBS})
 endif()

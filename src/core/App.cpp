@@ -74,6 +74,27 @@ void App::HandleEvents() {
     }
 }
 void App::Update() {
+    if (resetPending) {
+        bool success = false;
+        if (connection.PollResetAcknowledgement(success)) {
+            resetPending = false;
+            if (!success) {
+                replayAfterReset = false;
+                connectionStatus = "Mupen64Plus rejected the reset command.";
+            } else {
+                project.SelectFrame(0);
+                if (replayAfterReset && replayTarget > 0) {
+                    playback = true;
+                    connectionStatus = "Restarted emulator; replaying inputs to restore the requested TAS position.";
+                } else {
+                    playback = false;
+                    connectionStatus = "Emulator restarted. TAS input data was preserved.";
+                }
+                replayAfterReset = false;
+            }
+        }
+        return;
+    }
     if (!connection.IsConnected()) {
         if (singleStepRequested) {
             singleStepRequested = false;
@@ -102,7 +123,11 @@ void App::Update() {
             if (project.GetSelectedFrame() + 1 < project.GetFrameCount())
                 project.SelectFrame(project.GetSelectedFrame() + 1);
 
-            if (singleStepRequested) {
+            if (replayTarget > 0 && project.GetSelectedFrame() >= replayTarget) {
+                playback = false;
+                replayTarget = 0;
+                connectionStatus = "Rewind complete. Emulator replayed from reset to the selected TAS position.";
+            } else if (singleStepRequested) {
                 singleStepRequested = false;
                 connectionStatus = "One frame input poll acknowledged. Ready for the next step.";
             } else if (stopAfterAck) {
@@ -127,6 +152,24 @@ void App::Update() {
     } else if (!connection.IsConnected()) {
         playback = false;
         connectionStatus = "Connection lost while sending frame.";
+    }
+}
+void App::RequestRestart(std::size_t replayFrames) {
+    if (!connection.IsConnected()) {
+        connectionStatus = "Connect to the Mupen64Plus plugin first.";
+        return;
+    }
+    if (frameInFlight || resetPending || playback) {
+        connectionStatus = "Pause playback and wait for the current input poll before restarting.";
+        return;
+    }
+    if (connection.SendReset()) {
+        resetPending = true;
+        replayAfterReset = replayFrames > 0;
+        replayTarget = replayFrames;
+        playback = false;
+        singleStepRequested = false;
+        connectionStatus = "Reset command sent; waiting for Mupen64Plus.";
     }
 }
 void App::ConnectEmulatorPlugin() {
@@ -204,7 +247,15 @@ void App::RenderTimeline() {
     if (ImGui::Button("Delete")) project.DeleteFrame(selected);
     ImGui::EndDisabled();
     ImGui::SameLine();
-    if (!playback && !frameInFlight && !singleStepRequested) {
+    ImGui::BeginDisabled(!connection.IsConnected() || playback || frameInFlight || resetPending || singleStepRequested);
+    if (ImGui::Button("Rewind to selected")) {
+        if (selected > 0) RequestRestart(selected);
+        else RequestRestart(0);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Restart Emulator")) RequestRestart(0);
+    ImGui::EndDisabled();
+    if (!playback && !frameInFlight && !singleStepRequested && !resetPending) {
         if (ImGui::Button("Step Frame")) {
             if (connection.IsConnected()) {
                 singleStepRequested = true;
@@ -340,7 +391,7 @@ void App::Render() {
         connectionStatus = "Disconnected.";
     }
     ImGui::Text("Target: 127.0.0.1:6464");
-    ImGui::TextWrapped("Protocol v2: one frame is sent and acknowledged at the emulator's GetKeys input poll before the next frame is sent.");
+    ImGui::TextWrapped("Protocol v3: lockstep input frames plus a direct core reset command. Rewind rebuilds the state by replaying inputs from the beginning.");
     ImGui::End();
     ImGui::Begin("Input Editor"); RenderInputEditor(); ImGui::End();
     ImGui::Begin("Timeline"); RenderTimeline(); ImGui::End();

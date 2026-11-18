@@ -58,7 +58,7 @@ bool TcpClient::Connect(const char* host, std::uint16_t port)
     if (flags < 0 || fcntl(socket_, F_SETFL, flags | O_NONBLOCK) < 0)
 #endif
     { Disconnect(); return false; }
-    sendBytes_ = 0; ackBytes_ = 0;
+    sendBytes_ = 0; ackBytes_ = 0; resetSendBytes_ = 0; resetAckBytes_ = 0;
     return true;
 }
 void TcpClient::Disconnect()
@@ -74,7 +74,7 @@ void TcpClient::Disconnect()
 #if defined(_WIN32)
     if (winsockStarted_) { WSACleanup(); winsockStarted_ = false; }
 #endif
-    sendBytes_ = 0; ackBytes_ = 0;
+    sendBytes_ = 0; ackBytes_ = 0; resetSendBytes_ = 0; resetAckBytes_ = 0;
 }
 bool TcpClient::IsConnected() const { return socket_ != InvalidSocket; }
 
@@ -158,5 +158,45 @@ bool TcpClient::PollAcknowledgement(std::uint64_t& frameNumber)
     }
     frameNumber = ReadU64BE(ackBuffer_.data() + 6);
     ackBytes_ = 0;
+    return true;
+}
+
+
+bool TcpClient::SendReset()
+{
+    if (!IsConnected() || sendBytes_ != 0 || resetAckBytes_ != 0) return false;
+    while (resetSendBytes_ < resetBuffer_.size()) {
+#if defined(_WIN32)
+        const int n = send(static_cast<SOCKET>(socket_), reinterpret_cast<const char*>(resetBuffer_.data() + resetSendBytes_), static_cast<int>(resetBuffer_.size() - resetSendBytes_), 0);
+        if (n == SOCKET_ERROR) { if (WSAGetLastError() == WSAEWOULDBLOCK) return false; Disconnect(); return false; }
+#else
+        const auto n = send(socket_, resetBuffer_.data() + resetSendBytes_, resetBuffer_.size() - resetSendBytes_, MSG_NOSIGNAL);
+        if (n < 0) { if (errno == EAGAIN || errno == EWOULDBLOCK) return false; Disconnect(); return false; }
+#endif
+        if (n == 0) { Disconnect(); return false; }
+        resetSendBytes_ += static_cast<std::size_t>(n);
+    }
+    resetSendBytes_ = 0;
+    return true;
+}
+
+bool TcpClient::PollResetAcknowledgement(bool& success)
+{
+    if (!IsConnected()) return false;
+    while (resetAckBytes_ < resetAckBuffer_.size()) {
+#if defined(_WIN32)
+        const int n = recv(static_cast<SOCKET>(socket_), reinterpret_cast<char*>(resetAckBuffer_.data() + resetAckBytes_), static_cast<int>(resetAckBuffer_.size() - resetAckBytes_), 0);
+        if (n == SOCKET_ERROR) { if (WSAGetLastError() == WSAEWOULDBLOCK) return false; Disconnect(); return false; }
+#else
+        const auto n = recv(socket_, resetAckBuffer_.data() + resetAckBytes_, resetAckBuffer_.size() - resetAckBytes_, 0);
+        if (n < 0) { if (errno == EAGAIN || errno == EWOULDBLOCK) return false; Disconnect(); return false; }
+#endif
+        if (n == 0) { Disconnect(); return false; }
+        resetAckBytes_ += static_cast<std::size_t>(n);
+    }
+    const bool valid = resetAckBuffer_[0] == 'R' && resetAckBuffer_[1] == 'A' && resetAckBuffer_[2] == 'C' && resetAckBuffer_[3] == 'K';
+    success = valid && resetAckBuffer_[4] == 0;
+    resetAckBytes_ = 0;
+    if (!valid) { Disconnect(); return false; }
     return true;
 }

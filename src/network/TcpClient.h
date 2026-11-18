@@ -18,6 +18,8 @@ public:
     bool IsConnected() const;
     bool SendFrame(int controller, std::uint64_t frameNumber, const ControllerState& state);
     bool PollAcknowledgement(std::uint64_t& frameNumber);
+    bool SendReset();
+    bool PollResetAcknowledgement(bool& success);
 
 private:
 #if defined(_WIN32)
@@ -33,4 +35,8 @@ private:
     std::size_t sendBytes_ = 0;
     std::array<std::uint8_t, 14> ackBuffer_{};
     std::size_t ackBytes_ = 0;
+    std::array<std::uint8_t, 4> resetBuffer_{{'R','S','T','2'}};
+    std::size_t resetSendBytes_ = 0;
+    std::array<std::uint8_t, 5> resetAckBuffer_{};
+    std::size_t resetAckBytes_ = 0;
 };

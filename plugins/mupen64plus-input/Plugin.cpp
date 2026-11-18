@@ -8,6 +8,11 @@
 #include <cstring>
 #include <mutex>
 #include <thread>
+#if defined(_WIN32)
+#  include <windows.h>
+#else
+#  include <dlfcn.h>
+#endif
 
 #if defined(_WIN32)
 #  ifndef NOMINMAX
@@ -33,6 +38,8 @@ namespace {
 constexpr std::uint16_t kPort = 6464;
 constexpr std::size_t kFramePacketSize = 18;
 constexpr std::size_t kAckPacketSize = 14;
+constexpr std::size_t kResetAckPacketSize = 5;
+ptr_CoreDoCommand gCoreDoCommand = nullptr;
 constexpr std::uint16_t kButtonMask = 0x3FFF;
 
 struct ControllerState {
@@ -112,13 +119,25 @@ void ResetFrameQueue() {
     gAckReady = false;
     gFrameChanged.notify_all();
 }
+bool HandleReset(Socket client) {
+    std::uint8_t ack[kResetAckPacketSize] = {'R','A','C','K',1};
+    // Core commands are issued through the Core API exported by the loaded Mupen64Plus library.
+    // The reset is requested on the bridge thread, never from the controller callback.
+    if (gCoreDoCommand && gCoreDoCommand(M64CMD_RESET, 1, nullptr) == M64ERR_SUCCESS)
+        ack[4] = 0;
+    return SendExact(client, ack, sizeof(ack));
+}
 void HandleClient(Socket client) {
     gActiveClient.store(client);
     gClientConnected.store(true);
     gFrameChanged.notify_all();
     std::uint8_t packet[kFramePacketSize]{};
-    while (gRunning.load() && ReceiveExact(client, packet, sizeof(packet))) {
-        if (std::memcmp(packet, "OT64", 4) != 0 || packet[4] != 2 || packet[5] > 3)
+    while (gRunning.load() && ReceiveExact(client, packet, 4)) {
+        if (std::memcmp(packet, "RST2", 4) == 0) {
+            if (!HandleReset(client)) break;
+            continue;
+        }
+        if (std::memcmp(packet, "OT64", 4) != 0 || !ReceiveExact(client, packet + 4, kFramePacketSize - 4) || packet[4] != 2 || packet[5] > 3)
             continue;
         PendingFrame frame;
         frame.valid = true;
@@ -215,7 +234,7 @@ void StopServer() {
 }
 }
 
-m64p_error OT64_CALL PluginStartup(m64p_dynlib_handle, void* context,
+m64p_error OT64_CALL PluginStartup(m64p_dynlib_handle coreHandle, void* context,
                                     void (*debugCallback)(void*, int, const char*)) {
     if (gRunning.load()) return M64ERR_ALREADY_INIT;
 #if defined(_WIN32)
@@ -224,6 +243,14 @@ m64p_error OT64_CALL PluginStartup(m64p_dynlib_handle, void* context,
 #endif
     if (gServerThread.joinable()) gServerThread.join();
     gDebugContext = context; gDebugCallback = debugCallback;
+#if defined(_WIN32)
+    gCoreDoCommand = reinterpret_cast<ptr_CoreDoCommand>(GetProcAddress(static_cast<HMODULE>(coreHandle), "CoreDoCommand"));
+#else
+    gCoreDoCommand = reinterpret_cast<ptr_CoreDoCommand>(dlsym(coreHandle, "CoreDoCommand"));
+#endif
+    if (!gCoreDoCommand) {
+        Log(1, "OpenTAS64 bridge: CoreDoCommand is unavailable; restart controls are disabled.");
+    }
     gRunning.store(true);
     try { gServerThread = std::thread(ServerLoop); }
     catch (...) {
@@ -240,7 +267,7 @@ m64p_error OT64_CALL PluginShutdown() {
 #if defined(_WIN32)
     WSACleanup();
 #endif
-    gDebugCallback = nullptr; gDebugContext = nullptr;
+    gDebugCallback = nullptr; gDebugContext = nullptr; gCoreDoCommand = nullptr;
     return M64ERR_SUCCESS;
 }
 m64p_error OT64_CALL PluginGetVersion(m64p_plugin_type* type, int* pluginVersion,
