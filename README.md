@@ -55,7 +55,6 @@ The plugin listens only on 127.0.0.1:6464. See [plugin setup](plugins/mupen64plu
 | Lockstep Input Delivery | 🧪 Input-poll acknowledged |
 | Step Frame | 🧪 One input poll per step; rendered-frame sync not guaranteed |
 | Rendered-frame synchronization | ⏳ Needs emulator-side frame-complete hook |
-| Emulator Pause between controller-0 input polls | 🧪 Implemented; needs runtime verification |
 | Emulator Reset / Native Frame Advance | ⏳ Planned |
 | Savestate Manager | ⏳ Planned |
 | RAM Watch / Search | ⏳ Planned |
@@ -74,6 +73,24 @@ On Windows, use py install.py.
 
 See [Installation Guide](docs/INSTALLATION.md) for supported platforms and requirements.
 
+## In-place updates
+
+If you already have an OpenTAS64 source checkout, update it without running the installer again:
+
+~~~bash
+python3 update.py
+~~~
+
+On Windows:
+
+~~~powershell
+py update.py
+~~~
+
+The updater fast-forwards the existing Git checkout, refreshes its submodules, rebuilds the application and Mupen64Plus input plugin, and runs the tests. It does not install system packages or recreate the installation. It preserves the local `imgui.ini` window layout and leaves untracked `.otas` projects and other user files untouched. Close OpenTAS64 before updating, especially on Windows.
+
+The updater expects the existing Git checkout and build prerequisites from the initial setup. If tracked source files have local modifications, it stops instead of overwriting them.
+
 ## Build requirements
 
 - C++17 compiler
@@ -81,7 +98,7 @@ See [Installation Guide](docs/INSTALLATION.md) for supported platforms and requi
 - SDL2 development package
 - Git submodules initialized (Dear ImGui)
 
-~~~bash
+~~~
 git submodule update --init --recursive
 cmake -S . -B build
 cmake --build build --config Release

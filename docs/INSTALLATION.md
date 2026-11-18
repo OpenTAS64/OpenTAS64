@@ -38,6 +38,26 @@ The installer may request administrator permission to install system packages. I
 - Re-running the script is supported.
 - This builds the software from source. It does not package a signed native Windows EXE or macOS DMG installer.
 
+## Updating an existing installation
+
+Do **not** run `install.py` for routine updates. From the existing repository directory, run:
+
+```bash
+python3 update.py
+```
+
+On Windows:
+
+```powershell
+py update.py
+```
+
+The updater detects the operating system, updates the existing Git checkout using a fast-forward-only pull, refreshes Git submodules, rebuilds the existing CMake build directory, and runs the tests. It does not reinstall system dependencies.
+
+Before updating, close OpenTAS64. The updater temporarily backs up and restores the local `imgui.ini` file so the Dear ImGui window layout is retained, and it does not delete untracked `.otas` projects or other user files. It refuses to proceed when tracked source files other than `imgui.ini` have local modifications. If the build or tests fail, it restores the previous executable and plugin files where possible.
+
+The updater must be run from the existing OpenTAS64 Git checkout and requires the compiler, CMake, SDL2 development files, and Git submodule setup from the initial installation.
+
 ## Troubleshooting
 
 - If Windows reports that Git or CMake is not available immediately after installation, close the terminal, open a new one, and run the installer again. Some Windows package changes do not update the current process environment.
