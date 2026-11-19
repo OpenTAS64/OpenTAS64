@@ -21,6 +21,7 @@ using Socket = SOCKET;
 constexpr Socket kInvalidSocket = INVALID_SOCKET;
 static void CloseSocket(Socket s) { if (s != kInvalidSocket) closesocket(s); }
 #else
+#  include <dlfcn.h>
 #  include <arpa/inet.h>
 #  include <netinet/in.h>
 #  include <sys/select.h>
