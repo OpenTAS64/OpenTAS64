@@ -9,17 +9,14 @@
 #include <mutex>
 #include <thread>
 #if defined(_WIN32)
-#  include <windows.h>
-#else
-#  include <dlfcn.h>
-#endif
-
-#if defined(_WIN32)
 #  ifndef NOMINMAX
 #    define NOMINMAX
 #  endif
+// winsock2.h must precede windows.h; otherwise the legacy winsock.h declarations
+// conflict with the Winsock 2 declarations used by ws2tcpip.h.
 #  include <winsock2.h>
 #  include <ws2tcpip.h>
+#  include <windows.h>
 using Socket = SOCKET;
 constexpr Socket kInvalidSocket = INVALID_SOCKET;
 static void CloseSocket(Socket s) { if (s != kInvalidSocket) closesocket(s); }
