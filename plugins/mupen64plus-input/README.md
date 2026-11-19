@@ -8,11 +8,12 @@ The desktop OpenTAS64 application connects directly to this local endpoint. The 
 
 - Receives frame-indexed controller states from OpenTAS64.
 - Supplies queued controller input through Mupen64Plus's `GetKeys` callback.
-- Uses one-frame-at-a-time lockstep delivery and acknowledges a frame after the controller-0 input poll consumes it.
+- Keeps each queued controller state active across repeated `GetKeys` reads within one emulated frame.
+- Registers `M64CMD_SET_FRAME_CALLBACK` and acknowledges a frame at the Mupen64Plus core frame boundary.
 - Releases controller state to neutral when the editor disconnects.
 - Handles the `RST2` reset control packet by requesting `M64CMD_RESET` through the Mupen64Plus Core API and replying with `RACK` plus a status byte.
 
-The acknowledgement confirms an input poll, not completion of the corresponding rendered video frame.
+The acknowledgement confirms that the Mupen64Plus core reached its emulated frame callback boundary after the input was latched. It does not guarantee that the host display presented the corresponding image. If the core rejects frame-callback registration, the plugin refuses to start rather than silently using weaker input-poll acknowledgements.
 
 ## Build
 
@@ -36,9 +37,9 @@ The output is a platform shared library (DLL on Windows, shared object on Linux)
 
 See [the protocol specification](../../docs/CONNECTION_PROTOCOL.md). The control protocol is version 3. The existing frame packet retains its version-2 packet layout; version 3 adds the reset control packet.
 
-The plugin's controller-0 callback waits for the next queued input frame. It applies the state and signals the network worker, which sends the acknowledgement to the editor. The editor then advances to the next TAS frame.
+The plugin's controller-0 callback waits for the next queued input frame and latches that state for repeated controller reads during the emulated frame. The Mupen64Plus core frame callback then signals the network worker, which sends the acknowledgement to the editor. The editor advances only after this core frame boundary.
 
-**Step Frame** means one acknowledged input poll. It does not prove that a complete video frame has rendered. Exact video-frame synchronization requires a cooperating emulator core or video-plugin callback.
+**Step Frame** means one acknowledged emulated core frame. It does not prove that the host display has presented the image. Exact presentation synchronization would require a suitable graphics/video callback.
 
 ## Restart and rewind
 
@@ -46,7 +47,7 @@ The plugin's controller-0 callback waits for the next queued input frame. It app
 
 **Rewind to selected** performs a reset and replays the recorded inputs from the beginning until the selected timeline position. It does not currently use savestates, so rewind duration increases with the distance from the beginning.
 
-The reset API call is made from the plugin's bridge thread. Its safety and behavior can vary with the Mupen64Plus build. Test restart and replay with the exact emulator version you intend to use. If `CoreDoCommand` is unavailable, reset controls are disabled by the plugin.
+The reset API call is made from the plugin's bridge thread. Its safety and behavior can vary with the Mupen64Plus build. Test restart and replay with the exact emulator version you intend to use. If `CoreDoCommand` or frame-callback registration is unavailable, plugin startup fails so unsynchronized playback is not silently enabled.
 
 ## Runtime verification
 

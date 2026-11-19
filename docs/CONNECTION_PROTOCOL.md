@@ -4,7 +4,7 @@
 
 The desktop application connects to the Mupen64Plus input plugin over loopback TCP on `127.0.0.1:6464`. Protocol v3 retains the v2 one-frame-at-a-time lockstep input delivery and adds a reset control packet.
 
-The plugin waits in controller-0 `GetKeys` when no frame is queued. A frame acknowledgement means the input callback consumed the requested input; it does not guarantee a completed rendered video frame.
+The plugin registers Mupen64Plus' `M64CMD_SET_FRAME_CALLBACK` callback. Controller-0 `GetKeys` latches the queued input and keeps it active for repeated reads during that emulated frame. The editor receives the frame acknowledgement only when the core invokes its frame callback at the next emulated frame boundary. This confirms core-frame progression; it does not claim that the host display has presented the image.
 
 ## Frame packet (18 bytes)
 
@@ -26,4 +26,4 @@ The editor sends the four-byte ASCII packet `RST2`. The plugin calls the Mupen64
 
 Rewind is implemented as deterministic replay rather than per-frame savestates: the editor requests a hard emulator reset, then replays the project's recorded inputs from frame zero until the selected timeline position. The project input data is not modified. This can take longer than a savestate rewind, especially for distant frames.
 
-Core reset is issued from the plugin's network bridge thread. Runtime behavior depends on the Mupen64Plus build and its thread-safety guarantees; verify restart and replay with the target emulator before relying on it for a recording. The input acknowledgement remains an input-poll acknowledgement, not a rendered-frame completion event. Exact video-frame synchronization still requires a cooperating core/video hook.
+Core reset is issued from the plugin's network bridge thread. Runtime behavior depends on the Mupen64Plus build and its thread-safety guarantees; verify restart and replay with the target emulator before relying on it for a recording. Frame acknowledgements now come from the Mupen64Plus core frame callback rather than directly from `GetKeys`. The callback is a core emulation-frame boundary, not a guarantee that the host display has presented the corresponding image. If the core does not accept callback registration, the plugin refuses to start rather than silently falling back to weaker input-poll acknowledgements.

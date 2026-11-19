@@ -20,7 +20,7 @@ enum m64p_error { M64ERR_SUCCESS = 0, M64ERR_NOT_INIT = 1, M64ERR_ALREADY_INIT =
     M64ERR_SYSTEM_FAIL = 12, M64ERR_UNSUPPORTED = 13, M64ERR_WRONG_TYPE = 14 };
 enum m64p_plugin_type { M64PLUGIN_NULL = 0, M64PLUGIN_RSP = 1, M64PLUGIN_GFX = 2,
     M64PLUGIN_AUDIO = 3, M64PLUGIN_INPUT = 4, M64PLUGIN_CORE = 5 };
-enum m64p_command { M64CMD_RESET = 19 };
+enum m64p_command { M64CMD_SET_FRAME_CALLBACK = 15, M64CMD_RESET = 19 };
 using ptr_CoreDoCommand = m64p_error (OT64_CALL *)(m64p_command, int, void*);
 
 struct OT64_CONTROL { int Present; int RawData; int Plugin; int Type; };

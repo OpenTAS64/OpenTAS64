@@ -6,7 +6,7 @@ OpenTAS64 is a standalone desktop application for creating, editing, and playing
 
 **[🌐 Project website](https://opentas64.github.io/OpenTAS64/)**
 
-> **🚧 Status:** Early development. The desktop editor, native project format, vertical Piano Roll, Mupen64Plus input plugin, lockstep input delivery, emulator restart command, and replay-based rewind are implemented. Input acknowledgements are tied to the emulator's controller input poll, not completed video frames.
+> **🚧 Status:** Early development. The desktop editor, native project format, vertical Piano Roll, Mupen64Plus input plugin, core-frame-boundary acknowledgements, emulator restart command, and replay-based rewind are implemented. Runtime behavior still needs verification with the target Mupen64Plus build.
 
 ## Implemented
 
@@ -20,7 +20,8 @@ OpenTAS64 is a standalone desktop application for creating, editing, and playing
 - Mupen64Plus 2.x network input plugin
 - Direct local TCP connection between the editor and plugin
 - Lockstep input delivery: one frame in flight at a time
-- Input-poll acknowledgements from the Mupen64Plus GetKeys callback
+- Input states latched across repeated `GetKeys` calls within an emulated frame
+- Frame acknowledgements from Mupen64Plus' `M64CMD_SET_FRAME_CALLBACK` core callback
 - Single-step control and multi-frame playback
 - Pause handling that drains the in-flight input before pausing
 - **Restart Emulator:** requests a Mupen64Plus reset and returns the editor's selected frame to the beginning
@@ -30,9 +31,9 @@ OpenTAS64 is a standalone desktop application for creating, editing, and playing
 
 ## Synchronization and rewind notes
 
-The plugin acknowledges a frame after Mupen64Plus calls GetKeys and consumes the queued controller state. OpenTAS64 waits for that acknowledgement before advancing to the next input frame.
+The plugin latches the queued controller state when Mupen64Plus calls `GetKeys`. It keeps that state active for repeated reads during the emulated frame. The core's `M64CMD_SET_FRAME_CALLBACK` callback then acknowledges the frame at the core's emulated frame boundary, and OpenTAS64 waits for that acknowledgement before sending the next input.
 
-This is **not** a rendered-frame acknowledgement. It does not prove that the corresponding video frame has finished rendering or that the emulator's internal frame counter matches the TAS frame number. Step Frame currently means **one acknowledged input poll**, not a guaranteed completed video frame. Exact frame synchronization requires a cooperating emulator-core or video-plugin callback.
+This is a **core frame-boundary acknowledgement**, not a guarantee that the host display has presented the corresponding image. It also does not guarantee that the emulator's internal frame counter matches the TAS frame number. Exact host-visible presentation timing would require a suitable graphics/video callback.
 
 Rewind currently uses **reset and replay**, not per-frame savestates. The emulator is reset and the recorded TAS inputs are replayed from the beginning until the selected position. Longer rewinds therefore take longer. The project data is preserved.
 
@@ -59,7 +60,8 @@ The plugin listens only on `127.0.0.1:6464`. The editor communicates directly wi
 | Pause and multi-frame playback | 🧪 Needs runtime verification |
 | Emulator Restart | 🧪 Implemented; verify with target core |
 | Rewind to selected (reset + replay) | 🧪 Implemented; verify replay timing |
-| Rendered-frame synchronization | ⏳ Needs emulator-side frame-complete hook |
+| Core frame-boundary synchronization | 🧪 Implemented; needs runtime verification |
+| Host display presentation synchronization | ⏳ Not implemented |
 | Savestate Manager | ⏳ Planned |
 | RAM Watch / Search | ⏳ Planned |
 | Lua Scripting | ⏳ Planned |

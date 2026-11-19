@@ -18,7 +18,7 @@ The editor connects directly to the Mupen64Plus input plugin over TCP on `127.0.
 
 The control protocol is version 3. It retains the existing version-2 frame packet and acknowledgement layout and adds the `RST2` reset command with a `RACK` response. Frame delivery is lockstep: only one input frame is in flight at a time.
 
-The plugin receives packets on a worker thread and makes the queued controller state available through the emulator's normal `GetKeys` callback. Controller 0 waits until the editor supplies an input frame, consumes that state, and signals the worker thread to acknowledge the input poll. The editor waits for the acknowledgement before advancing to the next TAS input.
+The plugin receives packets on a worker thread and makes the queued controller state available through the emulator's normal `GetKeys` callback. Controller 0 latches each queued input state for the whole emulated frame, including repeated controller reads. The Mupen64Plus core frame callback signals the worker thread only after that emulated frame reaches the core frame boundary. The editor waits for this acknowledgement before advancing to the next TAS input.
 
 The plugin binds exclusively to `127.0.0.1`; it is not exposed on external network interfaces. On disconnect, controller state is reset to neutral and a waiting input callback is released.
 
@@ -26,9 +26,9 @@ The plugin binds exclusively to `127.0.0.1`; it is not exposed on external netwo
 
 The timeline and vertical Piano Roll edit the same emulator-independent frame data. The Piano Roll displays controller buttons as columns and input frames as rows. Each frame also stores analog stick X/Y values.
 
-A new project starts with 120 editable frames. Lockstep playback sends one input frame at a time and waits for its input-poll acknowledgement. **Step Frame** uses the same mechanism for a single input poll. Pause stops scheduling new inputs and allows an in-flight acknowledgement to finish.
+A new project starts with 120 editable frames. Lockstep playback sends one input frame at a time and waits for the core frame-boundary acknowledgement. **Step Frame** advances by one acknowledged emulated frame. Pause stops scheduling new inputs and allows an in-flight frame to reach its callback boundary.
 
-The acknowledgement confirms that the input plugin's `GetKeys` callback consumed the input. It does not confirm that the corresponding video frame finished rendering or that the emulator's internal frame counter matches the TAS frame number.
+The acknowledgement confirms that the Mupen64Plus core reached its frame callback after the input was latched. It does not guarantee that the host display presented the corresponding image or that the emulator's internal frame counter matches the TAS frame number.
 
 ## Restart and rewind
 
@@ -36,7 +36,7 @@ The acknowledgement confirms that the input plugin's `GetKeys` callback consumed
 
 **Rewind to selected** is currently implemented as reset and replay, not as a savestate restore. The editor requests a reset and then replays the stored TAS inputs from frame zero until the selected timeline position. This preserves the project data but makes longer rewinds take longer.
 
-The reset request is issued from the plugin's bridge thread. Whether this Core API call is safe in that context depends on the Mupen64Plus build and its threading behavior. Restart and replay must be verified with the exact emulator build in use. A successful input-poll acknowledgement is not a rendered-frame synchronization guarantee.
+The reset request is issued from the plugin's bridge thread. Whether this Core API call is safe in that context depends on the Mupen64Plus build and its threading behavior. Restart and replay must be verified with the exact emulator build in use. A successful core frame-boundary acknowledgement is not a rendered-frame synchronization guarantee.
 
 ## Design rules
 
@@ -46,12 +46,12 @@ The reset request is issued from the plugin's bridge thread. Whether this Core A
 4. Emulator-specific behavior belongs behind the plugin/integration boundary.
 5. Frame indices are zero-based internally.
 6. Every project contains at least one editable frame.
-7. Never describe an input-poll acknowledgement as a rendered-frame acknowledgement.
+7. Never describe a core frame-boundary acknowledgement as a rendered-frame acknowledgement.
 8. Restart and rewind must not clear or rewrite the recorded TAS input data.
 
 ## Current limitations
 
-- There is no emulator-side frame-complete callback, so exact rendered-frame synchronization is not implemented.
+- The core callback confirms an emulated frame boundary, not host display presentation or completion of the graphics plugin's presentation path.
 - Rewind replays inputs from the beginning; per-frame savestates are not implemented.
 - Core reset is requested from the bridge thread and requires runtime verification against the target Mupen64Plus build.
 - Actual in-game input acceptance, reset behavior, replay timing, pause/resume, and repeated stepping require manual testing.
@@ -59,6 +59,6 @@ The reset request is issued from the plugin's bridge thread. Whether this Core A
 ## Next steps
 
 - Verify controller input delivery, playback, pause/resume, repeated Step Frame, restart, and replay-based rewind in a running game.
-- Investigate a supported emulator-side frame-complete callback for stronger synchronization.
+- Investigate whether a graphics-plugin or video-presentation callback is needed for host-visible frame completion.
 - Investigate safe core-level control and savestate integration.
 - Expand movie import/export and memory inspection features.

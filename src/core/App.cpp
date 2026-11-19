@@ -129,14 +129,14 @@ void App::Update() {
                 connectionStatus = "Rewind complete. Emulator replayed from reset to the selected TAS position.";
             } else if (singleStepRequested) {
                 singleStepRequested = false;
-                connectionStatus = "One frame input poll acknowledged. Ready for the next step.";
+                connectionStatus = "One emulated frame completed. Ready for the next step.";
             } else if (stopAfterAck) {
                 stopAfterAck = false;
                 playback = false;
-                connectionStatus = "Playback stopped safely after the in-flight frame was acknowledged.";
+                connectionStatus = "Playback stopped safely after the in-flight frame completed.";
             } else if (project.GetSelectedFrame() + 1 >= project.GetFrameCount()) {
                 playback = false;
-                connectionStatus = "Playback finished. Last input frame was acknowledged by Mupen64Plus.";
+                connectionStatus = "Playback finished. Last emulated frame reached the core frame boundary.";
             }
         }
         return;
@@ -148,7 +148,7 @@ void App::Update() {
     if (connection.SendFrame(0, static_cast<std::uint64_t>(frame), state)) {
         inFlightFrame = static_cast<std::uint64_t>(frame);
         frameInFlight = true;
-        connectionStatus = "Sent frame " + std::to_string(frame) + "; waiting for emulator input poll.";
+        connectionStatus = "Sent frame " + std::to_string(frame) + "; waiting for the emulated frame to complete.";
     } else if (!connection.IsConnected()) {
         playback = false;
         connectionStatus = "Connection lost while sending frame.";
@@ -160,7 +160,7 @@ void App::RequestRestart(std::size_t replayFrames) {
         return;
     }
     if (frameInFlight || resetPending || playback) {
-        connectionStatus = "Pause playback and wait for the current input poll before restarting.";
+        connectionStatus = "Pause playback and wait for the current emulated frame to complete before restarting.";
         return;
     }
     if (connection.SendReset()) {
@@ -173,7 +173,7 @@ void App::RequestRestart(std::size_t replayFrames) {
     }
 }
 void App::ConnectEmulatorPlugin() {
-    if (connection.Connect()) connectionStatus = "Connected (protocol v2, 127.0.0.1:6464).";
+    if (connection.Connect()) connectionStatus = "Connected (protocol v3, 127.0.0.1:6464).";
     else connectionStatus = "Could not connect. Is the OpenTAS64 Mupen plugin loaded?";
 }
 void App::SaveProject() {

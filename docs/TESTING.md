@@ -1,6 +1,6 @@
 # OpenTAS64 Runtime Testing Checklist
 
-This checklist separates automated build tests from manual checks that require a running Mupen64Plus instance and game. Do not treat an input-poll acknowledgement as proof of a completed rendered frame.
+This checklist separates automated build tests from manual checks that require a running Mupen64Plus instance and game. Frame acknowledgements are driven by Mupen64Plus' core frame callback. Do not treat them as proof that the host display has presented the corresponding image.
 
 ## Build and automated tests
 
@@ -41,7 +41,7 @@ cmake --build build --config Release --target OpenTAS64MupenInput --parallel 2
 4. Select different timeline rows and confirm the Input Editor follows the selected frame.
 5. Change button and stick values on multiple rows; confirm each row retains its own values when switching frames.
 6. Insert and delete frames; confirm selection and neighboring input data remain consistent.
-7. Use **Step Frame** repeatedly. Confirm each command is acknowledged by one controller-0 input poll. Separately observe actual game/video progression; do not assume the acknowledgement means a rendered frame completed.
+7. Use **Step Frame** repeatedly. Confirm each command is acknowledged at a Mupen64Plus core frame callback boundary. Check that repeated `GetKeys` calls within one emulated frame keep the same controller state active. Separately observe host-visible video presentation; the core callback does not guarantee that the display has presented the image.
 8. Start playback and request **Pause**. Confirm the current in-flight input is acknowledged and no further TAS frame is sent.
 9. Resume playback and confirm input delivery continues from the expected timeline position.
 10. Use **Restart Emulator** while idle. Confirm Mupen64Plus resets, the editor selects frame 0, and the TAS input data is still present in the project.
@@ -52,8 +52,8 @@ cmake --build build --config Release --target OpenTAS64MupenInput --parallel 2
 
 ## Important limitations
 
-- The frame acknowledgement confirms that Mupen64Plus consumed an input state in its `GetKeys` callback. It does not confirm that a rendered video frame completed.
-- The pause gate waits at the next controller-0 input poll. It is not a general core-level pause command or a guaranteed video-frame boundary.
+- The frame acknowledgement is emitted by `M64CMD_SET_FRAME_CALLBACK` after the input state has been latched and the core reaches its emulated frame boundary. It does not guarantee host display presentation.
+- The pause gate is synchronized to the core frame callback and the next controller-0 input poll. It is not a general core-level pause command or a guarantee of host display presentation.
 - Rewind currently uses reset plus input replay, not savestates.
 - The plugin requests `M64CMD_RESET` through `CoreDoCommand` from its bridge thread. Runtime behavior depends on the target Mupen64Plus build and must be tested.
 - Automated project tests do not replace these emulator runtime checks.

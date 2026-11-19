@@ -65,7 +65,8 @@ std::mutex gFrameMutex;
 std::condition_variable gFrameChanged;
 PendingFrame gPending;
 bool gAckReady = false;
-std::uint64_t gAckFrame = 0;
+bool gPendingConsumed = false;
+bool gFrameCallbackRegistered = false;
 void* gDebugContext = nullptr;
 void (*gDebugCallback)(void*, int, const char*) = nullptr;
 
@@ -117,6 +118,15 @@ void ResetFrameQueue() {
     std::lock_guard<std::mutex> lock(gFrameMutex);
     gPending = PendingFrame{};
     gAckReady = false;
+    gPendingConsumed = false;
+    gFrameChanged.notify_all();
+}
+void OT64_CALL OnFrameComplete(unsigned int) {
+    std::lock_guard<std::mutex> lock(gFrameMutex);
+    if (!gPending.valid || !gPendingConsumed || gAckReady) return;
+    gPending.valid = false;
+    gPendingConsumed = false;
+    gAckReady = true;
     gFrameChanged.notify_all();
 }
 bool HandleReset(Socket client) {
@@ -249,12 +259,30 @@ m64p_error OT64_CALL PluginStartup(m64p_dynlib_handle coreHandle, void* context,
     gCoreDoCommand = reinterpret_cast<ptr_CoreDoCommand>(dlsym(coreHandle, "CoreDoCommand"));
 #endif
     if (!gCoreDoCommand) {
-        Log(1, "OpenTAS64 bridge: CoreDoCommand is unavailable; restart controls are disabled.");
+        Log(1, "OpenTAS64 bridge: CoreDoCommand is unavailable; frame synchronization and restart are unavailable.");
+#if defined(_WIN32)
+        WSACleanup();
+#endif
+        return M64ERR_PLUGIN_FAIL;
     }
+    if (gCoreDoCommand(M64CMD_SET_FRAME_CALLBACK, 0,
+                       reinterpret_cast<void*>(OnFrameComplete)) != M64ERR_SUCCESS) {
+        Log(1, "OpenTAS64 bridge: Mupen64Plus rejected the frame callback; refusing unsynchronized input mode.");
+        gCoreDoCommand = nullptr;
+#if defined(_WIN32)
+        WSACleanup();
+#endif
+        return M64ERR_PLUGIN_FAIL;
+    }
+    gFrameCallbackRegistered = true;
     gRunning.store(true);
     try { gServerThread = std::thread(ServerLoop); }
     catch (...) {
         gRunning.store(false);
+        if (gCoreDoCommand && gFrameCallbackRegistered) {
+            gCoreDoCommand(M64CMD_SET_FRAME_CALLBACK, 0, nullptr);
+            gFrameCallbackRegistered = false;
+        }
 #if defined(_WIN32)
         WSACleanup();
 #endif
@@ -263,6 +291,10 @@ m64p_error OT64_CALL PluginStartup(m64p_dynlib_handle coreHandle, void* context,
     return M64ERR_SUCCESS;
 }
 m64p_error OT64_CALL PluginShutdown() {
+    if (gCoreDoCommand && gFrameCallbackRegistered) {
+        gCoreDoCommand(M64CMD_SET_FRAME_CALLBACK, 0, nullptr);
+        gFrameCallbackRegistered = false;
+    }
     StopServer();
 #if defined(_WIN32)
     WSACleanup();
@@ -294,20 +326,19 @@ void OT64_CALL GetKeys(int control, OT64_BUTTONS* keys) {
 
     if (control == 0) {
         std::unique_lock<std::mutex> lock(gFrameMutex);
-        // Holding the emulator at its controller poll provides a real pause
-        // gate: the core cannot advance until the editor supplies the next frame.
+        // Keep one input state active for the whole emulated frame. Repeated
+        // controller reads must not consume the next TAS frame prematurely.
         gFrameChanged.wait(lock, [] {
             return !gRunning.load() || !gClientConnected.load() ||
                    (gPending.valid && gPending.port == 0);
         });
         if (!gRunning.load() || !gClientConnected.load()) return;
-        gControllers[0].buttons.store(gPending.buttons & kButtonMask);
-        gControllers[0].stickX.store(gPending.x);
-        gControllers[0].stickY.store(gPending.y);
-        gAckFrame = gPending.number;
-        gPending.valid = false;
-        gAckReady = true;
-        gFrameChanged.notify_all();
+        if (!gPendingConsumed) {
+            gControllers[0].buttons.store(gPending.buttons & kButtonMask);
+            gControllers[0].stickX.store(gPending.x);
+            gControllers[0].stickY.store(gPending.y);
+            gPendingConsumed = true;
+        }
     }
     const auto buttons = gControllers[control].buttons.load();
     const auto x = static_cast<std::uint8_t>(gControllers[control].stickX.load());
