@@ -57,6 +57,7 @@ bool App::Init()
         std::string loadError;
         if (project.LoadFromFile(projectPath, &loadError)) {
             currentProjectPath = projectPath;
+            lastSaveTime = "Restored from disk";
             fileStatus = "Automatically restored " + std::string(projectPath);
             fileStatusOk = true;
         } else {
@@ -312,6 +313,7 @@ void App::LoadProject() {
     if (project.LoadFromFile(projectPath, &error)) {
         projectDirty = false;
         currentProjectPath = projectPath;
+        lastSaveTime = "Loaded from disk";
         ResetHistory();
         std::ofstream recentFile("last_project.txt", std::ios::trunc);
         if (recentFile) recentFile << projectPath << '\n';
