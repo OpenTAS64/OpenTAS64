@@ -23,6 +23,9 @@ private:
     void SaveProject();
     void LoadProject();
     void CreateNewProject();
+    void RequestLoadProject();
+    void RequestNewProject();
+    void ContinuePendingProjectAction();
     void ConnectEmulatorPlugin();
     void RequestRestart(std::size_t replayFrames);
     void MarkProjectDirty();
@@ -57,4 +60,6 @@ private:
     std::vector<TasProject> redoHistory;
     TasProject historyState;
     bool historyInitialized = false;
+    int pendingProjectAction = 0; // 1 = load, 2 = new project
+    std::string lastSaveTime = "Not saved during this session";
 };
