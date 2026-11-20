@@ -130,6 +130,10 @@ cmake --build build --config Release
 ctest --test-dir build --output-on-failure
 ~~~
 
+## Application icon
+
+The OpenTAS64 controller mark is embedded in the application and is applied to the SDL window, so it is available without loading an external image file. Windows builds also generate and embed the matching `.ico` resource into the executable.
+
 ## Architecture and documentation
 
 - [Architecture](ARCHITECTURE.md)
@@ -145,8 +149,3 @@ The static project website lives in `website/` and is deployed by the GitHub Act
 ## License
 
 MIT — see LICENSE.
-
-
-### Application icon
-
-The OpenTAS64 controller mark is embedded in the application and is applied to the SDL window, so it is available without loading an external image file. Windows builds also generate and embed the matching `.ico` resource into the executable.
