@@ -24,6 +24,7 @@ private:
     void CreateNewProject();
     void ConnectEmulatorPlugin();
     void RequestRestart(std::size_t replayFrames);
+    void MarkProjectDirty();
 
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
@@ -42,4 +43,6 @@ private:
     bool replayAfterReset = false;
     std::size_t replayTarget = 0;
     std::uint64_t inFlightFrame = 0;
+    bool projectDirty = false;
+    Uint32 lastProjectEditTicks = 0;
 };

@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
 #include <iostream>
 #include <string>
 
@@ -38,6 +39,26 @@ std::string DescribeController(const ControllerState& c)
 bool App::Init()
 {
     project.EnsureFrame(119);
+    {
+        std::ifstream recentFile("last_project.txt");
+        std::string recentPath;
+        if (recentFile && std::getline(recentFile, recentPath) && !recentPath.empty() &&
+            recentPath.size() < sizeof(projectPath)) {
+            std::strncpy(projectPath, recentPath.c_str(), sizeof(projectPath) - 1);
+            projectPath[sizeof(projectPath) - 1] = '\0';
+        }
+    }
+    {
+        std::string loadError;
+        if (project.LoadFromFile(projectPath, &loadError)) {
+            fileStatus = "Automatically restored " + std::string(projectPath);
+            fileStatusOk = true;
+        } else {
+            fileStatus = "No previous project restored (" + loadError + ").";
+            fileStatusOk = true;
+        }
+        projectDirty = false;
+    }
     SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::cerr << "SDL_Init Error: " << SDL_GetError() << std::endl;
@@ -74,6 +95,10 @@ void App::HandleEvents() {
     }
 }
 void App::Update() {
+    if (projectDirty && !frameInFlight &&
+        static_cast<Uint32>(SDL_GetTicks() - lastProjectEditTicks) >= 750) {
+        SaveProject();
+    }
     if (resetPending) {
         bool success = false;
         if (connection.PollResetAcknowledgement(success)) {
@@ -176,10 +201,18 @@ void App::ConnectEmulatorPlugin() {
     if (connection.Connect()) connectionStatus = "Connected (protocol v3, 127.0.0.1:6464).";
     else connectionStatus = "Could not connect. Is the OpenTAS64 Mupen plugin loaded?";
 }
+void App::MarkProjectDirty() {
+    projectDirty = true;
+    lastProjectEditTicks = SDL_GetTicks();
+}
 void App::SaveProject() {
     std::string error;
     if (project.SaveToFile(projectPath, &error)) {
-        fileStatus = "Saved " + std::string(projectPath); fileStatusOk = true;
+        std::ofstream recentFile("last_project.txt", std::ios::trunc);
+        if (recentFile) recentFile << projectPath << '\n';
+        projectDirty = false;
+        fileStatus = "Saved " + std::string(projectPath) + " (automatic save enabled)";
+        fileStatusOk = true;
     } else { fileStatus = error; fileStatusOk = false; }
 }
 void App::LoadProject() {
@@ -190,6 +223,9 @@ void App::LoadProject() {
     }
     std::string error;
     if (project.LoadFromFile(projectPath, &error)) {
+        projectDirty = false;
+        std::ofstream recentFile("last_project.txt", std::ios::trunc);
+        if (recentFile) recentFile << projectPath << '\n';
         fileStatus = "Loaded " + std::string(projectPath); fileStatusOk = true;
     } else { fileStatus = error; fileStatusOk = false; }
 }
@@ -201,6 +237,7 @@ void App::CreateNewProject() {
     }
     playback = false; stopAfterAck = false;
     project.Clear(); project.EnsureFrame(119); project.SetName("Untitled TAS");
+    MarkProjectDirty();
     std::strncpy(projectPath, "project.otas", sizeof(projectPath) - 1);
     projectPath[sizeof(projectPath) - 1] = '\0';
     fileStatus = "New project created. Save it to keep your changes."; fileStatusOk = true;
@@ -225,8 +262,8 @@ void App::RenderInputEditor() {
     ImGui::Checkbox("C-Left", &c.cLeft); ImGui::Checkbox("C-Right", &c.cRight);
     ImGui::Columns(1); ImGui::Separator();
     int x = c.stickX, y = c.stickY;
-    if (ImGui::SliderInt("Stick X", &x, -128, 127)) c.stickX = static_cast<std::int8_t>(x);
-    if (ImGui::SliderInt("Stick Y", &y, -128, 127)) c.stickY = static_cast<std::int8_t>(y);
+    if (ImGui::SliderInt("Stick X", &x, -128, 127)) { c.stickX = static_cast<std::int8_t>(x); MarkProjectDirty(); }
+    if (ImGui::SliderInt("Stick Y", &y, -128, 127)) { c.stickY = static_cast<std::int8_t>(y); MarkProjectDirty(); }
     ImGui::Text("Raw stick: (%d, %d)", static_cast<int>(c.stickX), static_cast<int>(c.stickY));
     ImGui::EndDisabled();
 }
@@ -242,9 +279,9 @@ void App::RenderTimeline() {
     if (ImGui::Button("Next") && selected + 1 < count)
         project.SelectFrame(selected + 1);
     ImGui::SameLine();
-    if (ImGui::Button("Insert")) project.InsertFrame(selected);
+    if (ImGui::Button("Insert")) { project.InsertFrame(selected); MarkProjectDirty(); }
     ImGui::SameLine();
-    if (ImGui::Button("Delete")) project.DeleteFrame(selected);
+    if (ImGui::Button("Delete") && project.DeleteFrame(selected)) MarkProjectDirty();
     ImGui::EndDisabled();
     ImGui::SameLine();
     ImGui::BeginDisabled(!connection.IsConnected() || playback || frameInFlight || resetPending || singleStepRequested);
@@ -316,24 +353,30 @@ void App::RenderTimeline() {
             ImGui::TableSetColumnIndex(0);
             ImGui::BeginDisabled(playback || frameInFlight);
             const auto frameLabel = std::string(i == selected ? "> " : "") + std::to_string(i + 1);
-            if (ImGui::Selectable(frameLabel.c_str(), i == selected, ImGuiSelectableFlags_SpanAllColumns))
+            if (ImGui::Selectable(frameLabel.c_str(), i == selected, ImGuiSelectableFlags_SpanAllColumns)) {
                 project.SelectFrame(i);
+                MarkProjectDirty();
+            }
             ImGui::EndDisabled();
             ImGui::BeginDisabled(playback || frameInFlight);
             for (std::size_t column = 0; column < buttonColumns.size(); ++column) {
                 ImGui::TableSetColumnIndex(static_cast<int>(column + 1));
                 ImGui::PushID(static_cast<int>(column));
-                ImGui::Checkbox("##pressed", &(controller.*(buttonColumns[column].second)));
+                if (ImGui::Checkbox("##pressed", &(controller.*(buttonColumns[column].second)))) MarkProjectDirty();
                 ImGui::PopID();
             }
             ImGui::TableSetColumnIndex(15);
             int stickX = controller.stickX;
-            if (ImGui::SetNextItemWidth(58.0f), ImGui::InputInt("##stickx", &stickX, 0, 0))
+            if (ImGui::SetNextItemWidth(58.0f), ImGui::InputInt("##stickx", &stickX, 0, 0)) {
                 controller.stickX = static_cast<std::int8_t>(std::clamp(stickX, -128, 127));
+                MarkProjectDirty();
+            }
             ImGui::TableSetColumnIndex(16);
             int stickY = controller.stickY;
-            if (ImGui::SetNextItemWidth(58.0f), ImGui::InputInt("##sticky", &stickY, 0, 0))
+            if (ImGui::SetNextItemWidth(58.0f), ImGui::InputInt("##sticky", &stickY, 0, 0)) {
                 controller.stickY = static_cast<std::int8_t>(std::clamp(stickY, -128, 127));
+                MarkProjectDirty();
+            }
             ImGui::EndDisabled();
             ImGui::PopID();
         }
@@ -400,6 +443,7 @@ void App::Render() {
     SDL_RenderPresent(renderer);
 }
 void App::Shutdown() {
+    if (projectDirty) SaveProject();
     connection.Disconnect();
     ImGui_ImplSDLRenderer2_Shutdown(); ImGui_ImplSDL2_Shutdown(); ImGui::DestroyContext();
     if (renderer) SDL_DestroyRenderer(renderer);
