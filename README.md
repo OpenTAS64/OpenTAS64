@@ -16,6 +16,8 @@ OpenTAS64 is a standalone desktop application for creating, editing, and playing
 - Interactive analog-stick pad: drag the on-screen stick to set both axes, with live X/Y values and a one-click center control
 - Project editing history with Undo (`Ctrl+Z`) and Redo (`Ctrl+Y`), retaining up to 100 history states
 - Optional automatic project saving after edits (enabled by default) and automatic restoration of the most recently used project at startup
+- Visible unsaved-change state, last-save time, and a confirmation before loading or creating a project when autosave is disabled
+- Playback/navigation shortcuts: `Space` (play/pause), `Home` (first frame), `End` (last frame), and `Ctrl+S` (save); shortcuts are ignored while typing in text fields
 - Options menu for toggling autosave and switching between the visual analog-stick pad and independent X/Y sliders
 - 120-frame initial timeline with frame selection, insertion, deletion, and append controls to extend the timeline by one or ten frames at a time
 - Timeline capacity of up to 1,000,000 frames per project, with clipped row rendering to keep large timelines responsive
@@ -41,7 +43,7 @@ The Input Editor defaults to an interactive circular stick pad. Use the **Option
 
 Project edits are tracked by Undo and Redo history (up to 100 prior states). Use **Ctrl+Z** to undo and **Ctrl+Y** to redo, or use the corresponding entries in the File menu. History is reset when a project is loaded or a new project is created. Undo and redo are unavailable while playback or an input frame is in progress.
 
-When automatic saving is enabled, edits are saved after a short idle delay and the most recently used project path is restored on the next launch. Autosave can be disabled in the **Options** menu; manual Save and Load remain available, and disabling autosave also prevents the automatic shutdown save. The Options menu also lets you switch between the visual stick pad and separate X/Y sliders. Preferences are stored in `opentas64_settings.ini`. Automatic saving writes to the current project path, so use **Save** or **Save As** as appropriate when creating a separate copy.
+The Project panel shows whether changes are saved, whether autosave is enabled, and the last save time. If autosave is disabled, loading another project or creating a new one asks whether to save, discard, or cancel. When automatic saving is enabled, edits are saved after a short idle delay and the most recently used project path is restored on the next launch. Autosave can be disabled in the **Options** menu; manual Save and Load remain available, and disabling autosave also prevents the automatic shutdown save. The Options menu also lets you switch between the visual stick pad and separate X/Y sliders. Preferences are stored in `opentas64_settings.ini`. Automatic saving writes to the current project path, so use **Save** or **Save As** as appropriate when creating a separate copy.
 
 ## Synchronization and rewind notes
 
