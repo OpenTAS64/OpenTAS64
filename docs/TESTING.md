@@ -55,6 +55,10 @@ cmake --build build --config Release --target OpenTAS64MupenInput --parallel 2
 18. Save and reload the project after restart/rewind; confirm the recorded frame inputs and selected-frame behavior are retained as expected.
 
 19. In **Options**, toggle automatic saving off, edit the project, and confirm no timed or shutdown save occurs. Toggle it back on and confirm edits are saved after the idle delay. Restart OpenTAS64 and confirm the last-used project is restored. Also switch between the visual stick pad and X/Y sliders and confirm the preference survives restart. Verify manual Save and Load work regardless of the autosave setting.
+20. With autosave disabled and unsaved edits present, choose **Load** and **New** separately. Confirm the dialog offers **Save and continue**, **Discard changes**, and **Cancel**. Test all three choices. For Load, change the file path first and verify **Save and continue** saves the current project to its existing path before loading the requested project.
+21. Confirm the Project panel shows **Unsaved changes** immediately after an edit, returns to **All changes saved** after a successful save, and displays the autosave setting and last-save information. Selecting another frame alone must not mark the project as modified.
+22. Test `Space` to start/pause playback, `Home` to select the first frame, `End` to select the last frame, and `Ctrl+S` to save. Confirm shortcuts do not trigger while typing in the project-path field or another text input. Test both left and right Ctrl where available.
+23. Disconnect the plugin while a reset is pending and confirm the status reports the lost connection and allows a reconnect. Also test reset rejection and a failed connection attempt; confirm the status text explains what to check.
 
 ## Important limitations
 
