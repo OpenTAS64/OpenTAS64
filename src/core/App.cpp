@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <ctime>
 #include <cmath>
 #include <fstream>
 #include <iostream>
@@ -110,7 +111,8 @@ void App::Update() {
             resetPending = false;
             if (!success) {
                 replayAfterReset = false;
-                connectionStatus = "Mupen64Plus rejected the reset command.";
+                replayTarget = 0;
+                connectionStatus = "The plugin received the reset request, but Mupen64Plus rejected it. Check that the emulator core is running and initialized.";
             } else {
                 project.SelectFrame(0);
                 if (replayAfterReset && replayTarget > 0) {
@@ -122,6 +124,12 @@ void App::Update() {
                 }
                 replayAfterReset = false;
             }
+        } else if (!connection.IsConnected()) {
+            resetPending = false;
+            replayAfterReset = false;
+            replayTarget = 0;
+            playback = false;
+            connectionStatus = "Connection lost while waiting for the emulator reset acknowledgement. Reconnect before trying again.";
         }
         return;
     }
@@ -200,6 +208,10 @@ void App::RequestRestart(std::size_t replayFrames) {
         playback = false;
         singleStepRequested = false;
         connectionStatus = "Reset command sent; waiting for Mupen64Plus.";
+    } else if (!connection.IsConnected()) {
+        connectionStatus = "Connection lost while sending the reset command. Reconnect to the plugin and try again.";
+    } else {
+        connectionStatus = "The reset command could not be sent. Make sure no frame or reset request is still pending, then try again.";
     }
 }
 void App::ConnectEmulatorPlugin() {
@@ -267,6 +279,13 @@ void App::SaveProject() {
         std::ofstream recentFile("last_project.txt", std::ios::trunc);
         if (recentFile) recentFile << projectPath << '\n';
         projectDirty = false;
+        const std::time_t savedAt = std::time(nullptr);
+        const std::tm* localTime = std::localtime(&savedAt);
+        if (localTime) {
+            char timeBuffer[64]{};
+            if (std::strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S", localTime) > 0)
+                lastSaveTime = timeBuffer;
+        }
         fileStatus = "Saved " + std::string(projectPath) + (autosaveEnabled ? " (automatic saving enabled)" : " (automatic saving disabled)");
         fileStatusOk = true;
     } else { fileStatus = error; fileStatusOk = false; }
@@ -285,6 +304,51 @@ void App::LoadProject() {
         if (recentFile) recentFile << projectPath << '\n';
         fileStatus = "Loaded " + std::string(projectPath); fileStatusOk = true;
     } else { fileStatus = error; fileStatusOk = false; }
+}
+void App::RequestLoadProject() {
+    if (frameInFlight || resetPending) {
+        fileStatus = "Wait for the current emulator operation to finish before loading a project.";
+        fileStatusOk = false;
+        return;
+    }
+    if (projectDirty && !autosaveEnabled) {
+        pendingProjectAction = 1;
+        ImGui::OpenPopup("Unsaved changes");
+        return;
+    }
+    if (projectDirty && autosaveEnabled) {
+        SaveProject();
+        if (projectDirty) return;
+    }
+    playback = false;
+    LoadProject();
+}
+void App::RequestNewProject() {
+    if (frameInFlight || resetPending) {
+        fileStatus = "Wait for the current emulator operation to finish before creating a project.";
+        fileStatusOk = false;
+        return;
+    }
+    if (projectDirty && !autosaveEnabled) {
+        pendingProjectAction = 2;
+        ImGui::OpenPopup("Unsaved changes");
+        return;
+    }
+    if (projectDirty && autosaveEnabled) {
+        SaveProject();
+        if (projectDirty) return;
+    }
+    CreateNewProject();
+}
+void App::ContinuePendingProjectAction() {
+    const int action = pendingProjectAction;
+    pendingProjectAction = 0;
+    if (action == 1) {
+        playback = false;
+        LoadProject();
+    } else if (action == 2) {
+        CreateNewProject();
+    }
 }
 void App::CreateNewProject() {
     if (frameInFlight) {
@@ -553,15 +617,12 @@ void App::Render() {
     ImGui::DockSpace(ImGui::GetID("MainDockSpace")); ImGui::End();
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("New project")) CreateNewProject();
+            if (ImGui::MenuItem("New project")) RequestNewProject();
             if (ImGui::MenuItem("Undo", "Ctrl+Z", false, !undoHistory.empty() && !playback && !frameInFlight)) Undo();
             if (ImGui::MenuItem("Redo", "Ctrl+Y", false, !redoHistory.empty() && !playback && !frameInFlight)) Redo();
             ImGui::Separator();
             if (ImGui::MenuItem("Save project", "Ctrl+S")) SaveProject();
-            if (ImGui::MenuItem("Load project")) {
-                if (!frameInFlight) { playback = false; LoadProject(); }
-                else { fileStatus = "Wait for the in-flight frame acknowledgement before loading."; fileStatusOk = false; }
-            }
+            if (ImGui::MenuItem("Load project")) RequestLoadProject();
             ImGui::Separator();
             if (ImGui::MenuItem("Exit")) running = false;
             ImGui::EndMenu();
@@ -581,18 +642,52 @@ void App::Render() {
         }
         ImGui::EndMainMenuBar();
     }
-    if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_S)) SaveProject();
-    if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_Z)) Undo();
-    if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_Y)) Redo();
+    const ImGuiIO& io = ImGui::GetIO();
+    const bool shortcutsAllowed = !io.WantTextInput && !io.WantCaptureKeyboard &&
+        !ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId);
+    const bool controlDown = ImGui::IsKeyDown(ImGuiKey_LeftCtrl) || ImGui::IsKeyDown(ImGuiKey_RightCtrl);
+    if (shortcutsAllowed) {
+        if (controlDown && ImGui::IsKeyPressed(ImGuiKey_S)) SaveProject();
+        if (controlDown && ImGui::IsKeyPressed(ImGuiKey_Z)) Undo();
+        if (controlDown && ImGui::IsKeyPressed(ImGuiKey_Y)) Redo();
+        if (!controlDown && ImGui::IsKeyPressed(ImGuiKey_Space)) {
+            if (playback) {
+                if (frameInFlight) {
+                    stopAfterAck = true;
+                    playback = false;
+                    connectionStatus = "Pause requested; the current input poll will finish before playback stops.";
+                } else {
+                    playback = false;
+                    connectionStatus = "Playback paused.";
+                }
+            } else if (connection.IsConnected() && !frameInFlight && !resetPending && !singleStepRequested) {
+                stopAfterAck = false;
+                playback = true;
+                connectionStatus = "Lockstep playback started.";
+            } else if (!connection.IsConnected()) {
+                connectionStatus = "Connect to the Mupen64Plus plugin before starting playback.";
+            }
+        }
+        if (!playback && !frameInFlight && !resetPending && !singleStepRequested) {
+            if (ImGui::IsKeyPressed(ImGuiKey_Home)) {
+                project.SelectFrame(0);
+                connectionStatus = "Selected the first TAS frame.";
+            } else if (ImGui::IsKeyPressed(ImGuiKey_End)) {
+                project.SelectFrame(project.GetFrameCount() - 1);
+                connectionStatus = "Selected the last TAS frame.";
+            }
+        }
+    }
     ImGui::Begin("Project");
     ImGui::Text("Name: %s", project.GetName().c_str());
     ImGui::InputText("File path (.otas)", projectPath, sizeof(projectPath));
+    ImGui::TextColored(projectDirty ? ImVec4(1.0f, 0.68f, 0.22f, 1.0f) : ImVec4(0.35f, 0.85f, 0.45f, 1.0f),
+        "%s", projectDirty ? "Unsaved changes" : "All changes saved");
+    ImGui::SameLine();
+    ImGui::TextDisabled("Autosave: %s | Last save: %s", autosaveEnabled ? "On" : "Off", lastSaveTime.c_str());
     if (ImGui::Button("Save")) SaveProject();
-    ImGui::SameLine(); if (ImGui::Button("Load")) {
-        if (!frameInFlight) { playback = false; LoadProject(); }
-        else { fileStatus = "Wait for the in-flight frame acknowledgement before loading."; fileStatusOk = false; }
-    }
-    ImGui::SameLine(); if (ImGui::Button("New")) CreateNewProject();
+    ImGui::SameLine(); if (ImGui::Button("Load")) RequestLoadProject();
+    ImGui::SameLine(); if (ImGui::Button("New")) RequestNewProject();
     ImGui::Separator();
     ImGui::TextDisabled("Edit history");
     const bool historyLocked = playback || frameInFlight || resetPending;
@@ -604,6 +699,33 @@ void App::Render() {
     if (ImGui::Button("Redo  (Ctrl+Y)", ImVec2(132.0f, 0.0f))) Redo();
     ImGui::EndDisabled();
     ImGui::TextColored(fileStatusOk ? ImVec4(0.35f,0.85f,0.45f,1.0f) : ImVec4(1.0f,0.35f,0.3f,1.0f), "%s", fileStatus.c_str());
+    if (pendingProjectAction != 0) {
+        ImGui::OpenPopup("Unsaved changes");
+    }
+    if (ImGui::BeginPopupModal("Unsaved changes", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextWrapped("This project has unsaved changes and automatic saving is disabled.");
+        ImGui::TextWrapped(pendingProjectAction == 1
+            ? "Loading another project will discard these changes."
+            : "Creating a new project will discard these changes.");
+        if (ImGui::Button("Save and continue", ImVec2(150.0f, 0.0f))) {
+            SaveProject();
+            if (!projectDirty) {
+                ImGui::CloseCurrentPopup();
+                ContinuePendingProjectAction();
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Discard changes", ImVec2(150.0f, 0.0f))) {
+            ImGui::CloseCurrentPopup();
+            ContinuePendingProjectAction();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(90.0f, 0.0f))) {
+            pendingProjectAction = 0;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
     ImGui::End();
     ImGui::Begin("Connection");
     ImGui::Text("Mupen64Plus plugin: %s", connection.IsConnected() ? "Connected" : "Not connected");
@@ -611,10 +733,11 @@ void App::Render() {
     if (!connection.IsConnected()) {
         if (ImGui::Button("Connect to plugin")) ConnectEmulatorPlugin();
     } else if (ImGui::Button("Disconnect")) {
-        playback = false; frameInFlight = false; connection.Disconnect();
+        playback = false; frameInFlight = false; resetPending = false; replayAfterReset = false; connection.Disconnect();
         connectionStatus = "Disconnected.";
     }
     ImGui::Text("Target: 127.0.0.1:6464");
+    ImGui::TextDisabled("Shortcuts: Space = Play/Pause | Home = First frame | End = Last frame | Ctrl+S = Save");
     ImGui::TextWrapped("Protocol v3: lockstep input frames plus a direct core reset command. Rewind rebuilds the state by replaying inputs from the beginning.");
     ImGui::End();
     ImGui::Begin("Input Editor"); RenderInputEditor(); ImGui::End();
