@@ -30,6 +30,14 @@ A new project starts with 120 editable frames. Lockstep playback sends one input
 
 The acknowledgement confirms that the Mupen64Plus core reached its frame callback after the input was latched. It does not guarantee that the host display presented the corresponding image or that the emulator's internal frame counter matches the TAS frame number.
 
+## Input editor, project history, and persistence
+
+The Input Editor renders the analog stick as a circular two-dimensional pad. The user drags its handle to set X/Y values; the values are clamped to the controller's supported range and displayed numerically. A center control resets both axes to zero. This is a UI representation only: the underlying project model continues to store the same signed X/Y values per frame.
+
+Project edits are tracked through snapshot-based Undo/Redo history, capped at 100 previous states. A new project or a successfully loaded project establishes a fresh history baseline. Undo and redo are disabled while playback, frame delivery, or reset is active. Keyboard shortcuts are Ctrl+Z and Ctrl+Y, with matching File-menu commands.
+
+After an edit, the project is automatically saved after 750 ms of inactivity when no input frame is in flight. The last used project path is stored in `last_project.txt` and used to restore the project at startup. Manual project loading and saving remain available. The autosave uses the active project path; it does not create versioned backups.
+
 ## Restart and rewind
 
 **Restart Emulator** sends the `RST2` control packet. The plugin resolves Mupen64Plus's `CoreDoCommand` function and requests `M64CMD_RESET`. After a successful response, the editor returns its selected timeline position to frame zero. The TAS input data remains unchanged.

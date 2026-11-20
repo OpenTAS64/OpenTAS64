@@ -12,7 +12,10 @@ OpenTAS64 is a standalone desktop application for creating, editing, and playing
 
 - C++17 desktop application using SDL2 and Dear ImGui
 - Emulator-independent controller and input-frame data model
-- Offline editor for N64 buttons and analog stick X/Y
+- Offline editor for N64 controller buttons and analog stick X/Y
+- Interactive analog-stick pad: drag the on-screen stick to set both axes, with live X/Y values and a one-click center control
+- Project editing history with Undo (`Ctrl+Z`) and Redo (`Ctrl+Y`), retaining up to 100 history states
+- Automatic project saving after edits and automatic restoration of the most recently used project at startup
 - 120-frame initial timeline with frame selection, insertion, and deletion
 - Vertical Piano Roll with button columns and one row per frame
 - Direct editing of button states and analog stick values in the Piano Roll
@@ -28,6 +31,14 @@ OpenTAS64 is a standalone desktop application for creating, editing, and playing
 - **Rewind to selected:** resets the emulator and replays the saved TAS inputs from frame zero to the selected timeline position
 - Rewind/restart keep the TAS project's recorded input data intact
 - In-place updater that refreshes the existing checkout and rebuilds without reinstalling
+
+## Editing, history, and automatic saving
+
+The Input Editor uses an interactive circular stick pad instead of separate X/Y sliders. Drag the stick handle to set a direction and magnitude; the editor displays the current X/Y values and provides a **Center stick** control. The analog values remain part of the selected frame and can also be edited in the Piano Roll.
+
+Project edits are tracked by Undo and Redo history (up to 100 prior states). Use **Ctrl+Z** to undo and **Ctrl+Y** to redo, or use the corresponding entries in the File menu. History is reset when a project is loaded or a new project is created. Undo and redo are unavailable while playback or an input frame is in progress.
+
+Edits are automatically saved after a short idle delay. OpenTAS64 remembers the most recently used project path and restores that project on the next launch. Manual Save and Load remain available. Automatic saving writes to the current project path, so use **Save** or **Save As** as appropriate when creating a separate copy.
 
 ## Synchronization and rewind notes
 
@@ -55,6 +66,9 @@ The plugin listens only on `127.0.0.1:6464`. The editor communicates directly wi
 | Offline Input Editor | ✅ Implemented |
 | Frame Timeline and Vertical Piano Roll | ✅ Implemented |
 | Native Project Save / Load | ✅ Implemented |
+| Interactive Analog Stick Pad | ✅ Implemented |
+| Undo / Redo History | ✅ Implemented |
+| Autosave and Last Project Restore | ✅ Implemented |
 | Mupen64Plus Input Plugin | 🧪 Connects; game input needs verification |
 | Lockstep Input Delivery and Step Frame | 🧪 Input-poll acknowledged |
 | Pause and multi-frame playback | 🧪 Needs runtime verification |

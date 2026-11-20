@@ -39,16 +39,20 @@ cmake --build build --config Release --target OpenTAS64MupenInput --parallel 2
 2. Start OpenTAS64 and connect directly to the plugin. No launcher integration is used.
 3. Confirm a new project starts with 120 editable timeline frames.
 4. Select different timeline rows and confirm the Input Editor follows the selected frame.
-5. Change button and stick values on multiple rows; confirm each row retains its own values when switching frames.
-6. Insert and delete frames; confirm selection and neighboring input data remain consistent.
-7. Use **Step Frame** repeatedly. Confirm each command is acknowledged at a Mupen64Plus core frame callback boundary. Check that repeated `GetKeys` calls within one emulated frame keep the same controller state active. Separately observe host-visible video presentation; the core callback does not guarantee that the display has presented the image.
-8. Start playback and request **Pause**. Confirm the current in-flight input is acknowledged and no further TAS frame is sent.
-9. Resume playback and confirm input delivery continues from the expected timeline position.
-10. Use **Restart Emulator** while idle. Confirm Mupen64Plus resets, the editor selects frame 0, and the TAS input data is still present in the project.
-11. Select a frame later in the timeline and use **Rewind to selected**. Confirm the emulator resets and recorded inputs replay from frame zero up to the selected position. Confirm the project data remains unchanged.
-12. Repeat restart and rewind with the exact Mupen64Plus build intended for use. Record crashes, hangs, unexpected game state, or timing differences.
-13. Disconnect while idle and confirm the plugin releases controller state to neutral. Reconnect and verify input delivery resumes.
-14. Save and reload the project after restart/rewind; confirm the recorded frame inputs and selected-frame behavior are retained as expected.
+5. Change button values on multiple rows; confirm each row retains its own values when switching frames.
+6. In the Input Editor, drag the analog-stick handle to the center, edges, and diagonal directions. Confirm the displayed X/Y values update, remain within the supported range, and are stored on the selected frame. Use **Center stick** and confirm both axes return to zero.
+7. Use **Ctrl+Z** and **Ctrl+Y** (and the File-menu commands) to undo and redo button, stick, and timeline edits. Confirm history is cleared when loading a different project or creating a new one.
+8. Insert and delete frames; confirm selection and neighboring input data remain consistent.
+9. Use **Step Frame** repeatedly. Confirm each command is acknowledged at a Mupen64Plus core frame callback boundary. Check that repeated `GetKeys` calls within one emulated frame keep the same controller state active. Separately observe host-visible video presentation; the core callback does not guarantee that the display has presented the image.
+10. Start playback and request **Pause**. Confirm the current in-flight input is acknowledged and no further TAS frame is sent.
+11. Resume playback and confirm input delivery continues from the expected timeline position.
+12. Use **Restart Emulator** while idle. Confirm Mupen64Plus resets, the editor selects frame 0, and the TAS input data is still present in the project.
+13. Select a frame later in the timeline and use **Rewind to selected**. Confirm the emulator resets and recorded inputs replay from frame zero up to the selected position. Confirm the project data remains unchanged.
+14. Repeat restart and rewind with the exact Mupen64Plus build intended for use. Record crashes, hangs, unexpected game state, or timing differences.
+15. Disconnect while idle and confirm the plugin releases controller state to neutral. Reconnect and verify input delivery resumes.
+16. Save and reload the project after restart/rewind; confirm the recorded frame inputs and selected-frame behavior are retained as expected.
+
+17. Edit a project and wait for the autosave delay; confirm the current `.otas` file is updated. Restart OpenTAS64 and confirm the last-used project is restored. Also verify manual Save and Load still work.
 
 ## Important limitations
 
