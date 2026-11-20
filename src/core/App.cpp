@@ -216,7 +216,7 @@ void App::RequestRestart(std::size_t replayFrames) {
 }
 void App::ConnectEmulatorPlugin() {
     if (connection.Connect()) connectionStatus = "Connected (protocol v3, 127.0.0.1:6464).";
-    else connectionStatus = "Could not connect. Is the OpenTAS64 Mupen plugin loaded?";
+    else connectionStatus = "Could not connect to 127.0.0.1:6464. Start Mupen64Plus with the OpenTAS64 Network Input plugin loaded, then retry.";
 }
 void App::ResetHistory() {
     undoHistory.clear();
@@ -313,7 +313,7 @@ void App::RequestLoadProject() {
     }
     if (projectDirty && !autosaveEnabled) {
         pendingProjectAction = 1;
-        ImGui::OpenPopup("Unsaved changes");
+        unsavedPopupRequested = true;
         return;
     }
     if (projectDirty && autosaveEnabled) {
@@ -331,7 +331,7 @@ void App::RequestNewProject() {
     }
     if (projectDirty && !autosaveEnabled) {
         pendingProjectAction = 2;
-        ImGui::OpenPopup("Unsaved changes");
+        unsavedPopupRequested = true;
         return;
     }
     if (projectDirty && autosaveEnabled) {
@@ -483,12 +483,10 @@ void App::RenderTimeline() {
     ImGui::BeginDisabled(playback || frameInFlight);
     if (ImGui::Button("Previous") && selected > 0) {
         project.SelectFrame(selected - 1);
-        MarkProjectDirty();
     }
     ImGui::SameLine();
     if (ImGui::Button("Next") && selected + 1 < count) {
         project.SelectFrame(selected + 1);
-        MarkProjectDirty();
     }
     ImGui::SameLine();
     if (ImGui::Button("Insert")) { project.InsertFrame(selected); MarkProjectDirty(); }
@@ -571,7 +569,6 @@ void App::RenderTimeline() {
             const auto frameLabel = std::string(i == selected ? "> " : "") + std::to_string(i + 1);
             if (ImGui::Selectable(frameLabel.c_str(), i == selected, ImGuiSelectableFlags_SpanAllColumns)) {
                 project.SelectFrame(i);
-                MarkProjectDirty();
             }
             ImGui::EndDisabled();
             ImGui::BeginDisabled(playback || frameInFlight);
@@ -699,8 +696,9 @@ void App::Render() {
     if (ImGui::Button("Redo  (Ctrl+Y)", ImVec2(132.0f, 0.0f))) Redo();
     ImGui::EndDisabled();
     ImGui::TextColored(fileStatusOk ? ImVec4(0.35f,0.85f,0.45f,1.0f) : ImVec4(1.0f,0.35f,0.3f,1.0f), "%s", fileStatus.c_str());
-    if (pendingProjectAction != 0) {
+    if (unsavedPopupRequested) {
         ImGui::OpenPopup("Unsaved changes");
+        unsavedPopupRequested = false;
     }
     if (ImGui::BeginPopupModal("Unsaved changes", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::TextWrapped("This project has unsaved changes and automatic saving is disabled.");
@@ -722,6 +720,7 @@ void App::Render() {
         ImGui::SameLine();
         if (ImGui::Button("Cancel", ImVec2(90.0f, 0.0f))) {
             pendingProjectAction = 0;
+            unsavedPopupRequested = false;
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
