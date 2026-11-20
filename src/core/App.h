@@ -61,5 +61,6 @@ private:
     TasProject historyState;
     bool historyInitialized = false;
     int pendingProjectAction = 0; // 1 = load, 2 = new project
+    bool unsavedPopupRequested = false;
     std::string lastSaveTime = "Not saved during this session";
 };
