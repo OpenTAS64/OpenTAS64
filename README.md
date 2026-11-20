@@ -140,8 +140,6 @@ ctest --test-dir build --output-on-failure
 
 The static project website lives in `website/` and is deployed by the GitHub Actions workflow in `.github/workflows/pages.yml`.
 
-To enable it once, open **Settings → Pages** in the repository and select **GitHub Actions** as the build and deployment source. After that, pushes to `main` that change `website/` deploy the site automatically.
-
 ## License
 
 MIT — see LICENSE.
