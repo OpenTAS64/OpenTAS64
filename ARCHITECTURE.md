@@ -5,7 +5,7 @@ OpenTAS64 separates the emulator-independent TAS project model, persistence, des
 ## Repository modules
 
 - `src/tas/`: controller state, TAS frames, timeline operations, and native project serialization.
-- `src/core/`: SDL2 application lifecycle, project controls, playback state, and Dear ImGui application UI.
+- `src/core/`: SDL2 application lifecycle, embedded application icon, project controls, playback state, and Dear ImGui application UI.
 - `src/network/`: desktop-side TCP client for the local Mupen64Plus plugin bridge, including frame and reset commands.
 - `plugins/mupen64plus-input/`: Mupen64Plus 2.x input plugin and loopback TCP server.
 - `src/emulator/`: reserved for future emulator-control abstractions; it is not currently an implemented backend.
@@ -70,3 +70,7 @@ The reset request is issued from the plugin's bridge thread. Whether this Core A
 - Investigate whether a graphics-plugin or video-presentation callback is needed for host-visible frame completion.
 - Investigate safe core-level control and savestate integration.
 - Expand movie import/export and memory inspection features.
+
+## Application icon
+
+The controller mark is embedded as a compact bitmap in `src/core/AppIcon.h` and applied to the SDL window at startup. Windows builds use `tools/generate_windows_icon.py` to produce the executable's native `.ico` resource from the same embedded bitmap, avoiding a runtime asset path dependency.
