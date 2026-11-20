@@ -375,6 +375,7 @@ void App::CreateNewProject() {
     MarkProjectDirty();
     std::strncpy(projectPath, "project.otas", sizeof(projectPath) - 1);
     projectPath[sizeof(projectPath) - 1] = '\0';
+    currentProjectPath = projectPath;
     fileStatus = "New project created. Save it to keep your changes."; fileStatusOk = true;
 }
 void App::RenderInputEditor() {
