@@ -58,6 +58,7 @@ bool App::Init()
             fileStatusOk = true;
         }
         projectDirty = false;
+        ResetHistory();
     }
     SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -201,9 +202,43 @@ void App::ConnectEmulatorPlugin() {
     if (connection.Connect()) connectionStatus = "Connected (protocol v3, 127.0.0.1:6464).";
     else connectionStatus = "Could not connect. Is the OpenTAS64 Mupen plugin loaded?";
 }
+void App::ResetHistory() {
+    undoHistory.clear();
+    redoHistory.clear();
+    historyState = project;
+    historyInitialized = true;
+}
 void App::MarkProjectDirty() {
+    if (historyInitialized) {
+        undoHistory.push_back(historyState);
+        if (undoHistory.size() > 100) undoHistory.erase(undoHistory.begin());
+        redoHistory.clear();
+        historyState = project;
+    }
     projectDirty = true;
     lastProjectEditTicks = SDL_GetTicks();
+}
+void App::Undo() {
+    if (undoHistory.empty() || playback || frameInFlight || resetPending) return;
+    redoHistory.push_back(project);
+    project = undoHistory.back();
+    undoHistory.pop_back();
+    historyState = project;
+    projectDirty = true;
+    lastProjectEditTicks = SDL_GetTicks();
+    fileStatus = "Undo applied.";
+    fileStatusOk = true;
+}
+void App::Redo() {
+    if (redoHistory.empty() || playback || frameInFlight || resetPending) return;
+    undoHistory.push_back(project);
+    project = redoHistory.back();
+    redoHistory.pop_back();
+    historyState = project;
+    projectDirty = true;
+    lastProjectEditTicks = SDL_GetTicks();
+    fileStatus = "Redo applied.";
+    fileStatusOk = true;
 }
 void App::SaveProject() {
     std::string error;
@@ -224,6 +259,7 @@ void App::LoadProject() {
     std::string error;
     if (project.LoadFromFile(projectPath, &error)) {
         projectDirty = false;
+        ResetHistory();
         std::ofstream recentFile("last_project.txt", std::ios::trunc);
         if (recentFile) recentFile << projectPath << '\n';
         fileStatus = "Loaded " + std::string(projectPath); fileStatusOk = true;
@@ -237,6 +273,7 @@ void App::CreateNewProject() {
     }
     playback = false; stopAfterAck = false;
     project.Clear(); project.EnsureFrame(119); project.SetName("Untitled TAS");
+    ResetHistory();
     MarkProjectDirty();
     std::strncpy(projectPath, "project.otas", sizeof(projectPath) - 1);
     projectPath[sizeof(projectPath) - 1] = '\0';
@@ -405,6 +442,9 @@ void App::Render() {
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("New project")) CreateNewProject();
+            if (ImGui::MenuItem("Undo", "Ctrl+Z", false, !undoHistory.empty() && !playback && !frameInFlight)) Undo();
+            if (ImGui::MenuItem("Redo", "Ctrl+Y", false, !redoHistory.empty() && !playback && !frameInFlight)) Redo();
+            ImGui::Separator();
             if (ImGui::MenuItem("Save project", "Ctrl+S")) SaveProject();
             if (ImGui::MenuItem("Load project")) {
                 if (!frameInFlight) { playback = false; LoadProject(); }
@@ -417,6 +457,8 @@ void App::Render() {
         ImGui::EndMainMenuBar();
     }
     if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_S)) SaveProject();
+    if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_Z)) Undo();
+    if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_Y)) Redo();
     ImGui::Begin("Project");
     ImGui::Text("Name: %s", project.GetName().c_str());
     ImGui::InputText("File path (.otas)", projectPath, sizeof(projectPath));

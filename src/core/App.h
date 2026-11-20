@@ -3,6 +3,7 @@
 #include <SDL2/SDL.h>
 #include <cstdint>
 #include <string>
+#include <vector>
 #include "network/TcpClient.h"
 #include "tas/TasProject.h"
 
@@ -25,6 +26,9 @@ private:
     void ConnectEmulatorPlugin();
     void RequestRestart(std::size_t replayFrames);
     void MarkProjectDirty();
+    void Undo();
+    void Redo();
+    void ResetHistory();
 
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
@@ -45,4 +49,8 @@ private:
     std::uint64_t inFlightFrame = 0;
     bool projectDirty = false;
     Uint32 lastProjectEditTicks = 0;
+    std::vector<TasProject> undoHistory;
+    std::vector<TasProject> redoHistory;
+    TasProject historyState;
+    bool historyInitialized = false;
 };
