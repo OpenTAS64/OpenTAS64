@@ -1,4 +1,5 @@
 #include "App.h"
+#include "AppIcon.h"
 
 #include <algorithm>
 #include <array>
@@ -75,6 +76,13 @@ bool App::Init()
     window = SDL_CreateWindow("OpenTAS64", SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_SHOWN);
     if (!window) { std::cerr << SDL_GetError() << std::endl; SDL_Quit(); return false; }
+    if (SDL_Surface* appIcon = OpenTAS64Icon::Create()) {
+        SDL_SetWindowIcon(window, appIcon);
+        SDL_FreeSurface(appIcon);
+    } else {
+        std::cerr << "Could not load the embedded OpenTAS64 application icon: "
+                  << SDL_GetError() << std::endl;
+    }
     renderer = SDL_CreateRenderer(window, -1,
         SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!renderer) {
