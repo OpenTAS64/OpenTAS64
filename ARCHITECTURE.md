@@ -26,7 +26,7 @@ The plugin binds exclusively to `127.0.0.1`; it is not exposed on external netwo
 
 The timeline and vertical Piano Roll edit the same emulator-independent frame data. The Piano Roll displays controller buttons as columns and input frames as rows. Each frame also stores analog stick X/Y values.
 
-A new project starts with 120 editable frames. Lockstep playback sends one input frame at a time and waits for the core frame-boundary acknowledgement. **Step Frame** advances by one acknowledged emulated frame. Pause stops scheduling new inputs and allows an in-flight frame to reach its callback boundary.
+A new project starts with 120 editable frames. The Timeline panel can append one or ten blank frames at a time and select the first newly added frame. The project format currently accepts up to 1,000,000 frames; the UI prevents extending beyond that limit. Existing Insert and Delete operations remain available. Visible Undo and Redo buttons are provided in the Project panel as well as the Ctrl+Z / Ctrl+Y shortcuts. Lockstep playback sends one input frame at a time and waits for the core frame-boundary acknowledgement. **Step Frame** advances by one acknowledged emulated frame. Pause stops scheduling new inputs and allows an in-flight frame to reach its callback boundary.
 
 The acknowledgement confirms that the Mupen64Plus core reached its frame callback after the input was latched. It does not guarantee that the host display presented the corresponding image or that the emulator's internal frame counter matches the TAS frame number.
 

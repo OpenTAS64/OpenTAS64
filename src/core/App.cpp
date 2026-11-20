@@ -14,6 +14,8 @@
 #include "backends/imgui_impl_sdlrenderer2.h"
 
 namespace {
+constexpr std::size_t kMaximumTimelineFrames = 1000000;
+
 std::string DescribeController(const ControllerState& c)
 {
     std::string buttons;
@@ -355,6 +357,25 @@ void App::RenderTimeline() {
     const auto count = project.GetFrameCount();
     const auto selected = project.GetSelectedFrame();
     ImGui::Text("Frames: %zu  |  Selected frame: %zu", count, selected);
+    const std::size_t remainingFrames = count < kMaximumTimelineFrames
+        ? kMaximumTimelineFrames - count : 0;
+    ImGui::TextDisabled("Extend timeline:");
+    ImGui::SameLine();
+    ImGui::BeginDisabled(playback || frameInFlight || remainingFrames == 0);
+    if (ImGui::Button("Add frame")) {
+        project.InsertFrame(count);
+        project.SelectFrame(count);
+        MarkProjectDirty();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Add 10 frames")) {
+        const std::size_t framesToAdd = std::min<std::size_t>(10, remainingFrames);
+        for (std::size_t i = 0; i < framesToAdd; ++i)
+            project.InsertFrame(project.GetFrameCount());
+        project.SelectFrame(count);
+        MarkProjectDirty();
+    }
+    ImGui::EndDisabled();
     ImGui::SameLine();
     ImGui::BeginDisabled(playback || frameInFlight);
     if (ImGui::Button("Previous") && selected > 0) {
@@ -422,7 +443,7 @@ void App::RenderTimeline() {
         {"C-Left", &ControllerState::cLeft}, {"C-Right", &ControllerState::cRight}
     }};
 
-    ImGui::TextDisabled("Piano Roll: all frames are listed. Select a row to edit it; click a cell to toggle an input.");
+    ImGui::TextDisabled("Piano Roll: all frames are listed. Use Add frame / Add 10 frames above to extend the timeline; select a row to edit it.");
     ImGui::BeginChild("PianoRoll", ImVec2(0, 0), true);
     if (ImGui::BeginTable("PianoRollTable", 17,
         ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
@@ -515,6 +536,16 @@ void App::Render() {
         else { fileStatus = "Wait for the in-flight frame acknowledgement before loading."; fileStatusOk = false; }
     }
     ImGui::SameLine(); if (ImGui::Button("New")) CreateNewProject();
+    ImGui::Separator();
+    ImGui::TextDisabled("Edit history");
+    const bool historyLocked = playback || frameInFlight || resetPending;
+    ImGui::BeginDisabled(historyLocked || undoHistory.empty());
+    if (ImGui::Button("Undo  (Ctrl+Z)", ImVec2(132.0f, 0.0f))) Undo();
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(historyLocked || redoHistory.empty());
+    if (ImGui::Button("Redo  (Ctrl+Y)", ImVec2(132.0f, 0.0f))) Redo();
+    ImGui::EndDisabled();
     ImGui::TextColored(fileStatusOk ? ImVec4(0.35f,0.85f,0.45f,1.0f) : ImVec4(1.0f,0.35f,0.3f,1.0f), "%s", fileStatus.c_str());
     ImGui::End();
     ImGui::Begin("Connection");
