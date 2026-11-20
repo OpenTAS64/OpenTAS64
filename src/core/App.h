@@ -21,6 +21,7 @@ private:
     void RenderInputEditor();
     void RenderTimeline();
     void SaveProject();
+    void SaveActiveProject();
     void LoadProject();
     void CreateNewProject();
     void RequestLoadProject();
@@ -63,4 +64,5 @@ private:
     int pendingProjectAction = 0; // 1 = load, 2 = new project
     bool unsavedPopupRequested = false;
     std::string lastSaveTime = "Not saved during this session";
+    std::string currentProjectPath = "project.otas";
 };
