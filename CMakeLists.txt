@@ -34,6 +34,7 @@ target_compile_definitions(OpenTAS64 PRIVATE SDL_MAIN_HANDLED)
 target_link_libraries(OpenTAS64 PRIVATE SDL2::SDL2)
 
 if(WIN32)
+    enable_language(RC)
     target_link_libraries(OpenTAS64 PRIVATE ws2_32)
 
     # Give the built .exe the same icon as the SDL application window.
