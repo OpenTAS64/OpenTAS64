@@ -251,15 +251,15 @@ void App::RenderInputEditor() {
     ImGui::BeginDisabled(editingLocked);
     ImGui::Separator();
     ImGui::Columns(3, nullptr, false);
-    ImGui::Checkbox("A", &c.a); ImGui::Checkbox("B", &c.b);
-    ImGui::Checkbox("Z", &c.z); ImGui::Checkbox("Start", &c.start);
+    if (ImGui::Checkbox("A", &c.a);) MarkProjectDirty(); if (ImGui::Checkbox("B", &c.b);) MarkProjectDirty();
+    if (ImGui::Checkbox("Z", &c.z);) MarkProjectDirty(); if (ImGui::Checkbox("Start", &c.start);) MarkProjectDirty();
     ImGui::NextColumn();
-    ImGui::Checkbox("L", &c.l); ImGui::Checkbox("R", &c.r);
-    ImGui::Checkbox("D-Up", &c.dUp); ImGui::Checkbox("D-Down", &c.dDown);
+    if (ImGui::Checkbox("L", &c.l);) MarkProjectDirty(); if (ImGui::Checkbox("R", &c.r);) MarkProjectDirty();
+    if (ImGui::Checkbox("D-Up", &c.dUp);) MarkProjectDirty(); if (ImGui::Checkbox("D-Down", &c.dDown);) MarkProjectDirty();
     ImGui::NextColumn();
-    ImGui::Checkbox("D-Left", &c.dLeft); ImGui::Checkbox("D-Right", &c.dRight);
-    ImGui::Checkbox("C-Up", &c.cUp); ImGui::Checkbox("C-Down", &c.cDown);
-    ImGui::Checkbox("C-Left", &c.cLeft); ImGui::Checkbox("C-Right", &c.cRight);
+    if (ImGui::Checkbox("D-Left", &c.dLeft);) MarkProjectDirty(); if (ImGui::Checkbox("D-Right", &c.dRight);) MarkProjectDirty();
+    if (ImGui::Checkbox("C-Up", &c.cUp);) MarkProjectDirty(); if (ImGui::Checkbox("C-Down", &c.cDown);) MarkProjectDirty();
+    if (ImGui::Checkbox("C-Left", &c.cLeft);) MarkProjectDirty(); if (ImGui::Checkbox("C-Right", &c.cRight);) MarkProjectDirty();
     ImGui::Columns(1); ImGui::Separator();
     int x = c.stickX, y = c.stickY;
     if (ImGui::SliderInt("Stick X", &x, -128, 127)) { c.stickX = static_cast<std::int8_t>(x); MarkProjectDirty(); }
@@ -273,11 +273,15 @@ void App::RenderTimeline() {
     ImGui::Text("Frames: %zu  |  Selected frame: %zu", count, selected);
     ImGui::SameLine();
     ImGui::BeginDisabled(playback || frameInFlight);
-    if (ImGui::Button("Previous") && selected > 0)
+    if (ImGui::Button("Previous") && selected > 0) {
         project.SelectFrame(selected - 1);
+        MarkProjectDirty();
+    }
     ImGui::SameLine();
-    if (ImGui::Button("Next") && selected + 1 < count)
+    if (ImGui::Button("Next") && selected + 1 < count) {
         project.SelectFrame(selected + 1);
+        MarkProjectDirty();
+    }
     ImGui::SameLine();
     if (ImGui::Button("Insert")) { project.InsertFrame(selected); MarkProjectDirty(); }
     ImGui::SameLine();
