@@ -54,7 +54,7 @@ cmake --build build --config Release --target OpenTAS64MupenInput --parallel 2
 17. Disconnect while idle and confirm the plugin releases controller state to neutral. Reconnect and verify input delivery resumes.
 18. Save and reload the project after restart/rewind; confirm the recorded frame inputs and selected-frame behavior are retained as expected.
 
-19. Edit a project and wait for the autosave delay; confirm the current `.otas` file is updated. Restart OpenTAS64 and confirm the last-used project is restored. Also verify manual Save and Load still work.
+19. In **Options**, toggle automatic saving off, edit the project, and confirm no timed or shutdown save occurs. Toggle it back on and confirm edits are saved after the idle delay. Restart OpenTAS64 and confirm the last-used project is restored. Also switch between the visual stick pad and X/Y sliders and confirm the preference survives restart. Verify manual Save and Load work regardless of the autosave setting.
 
 ## Important limitations
 

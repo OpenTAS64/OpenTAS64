@@ -15,7 +15,8 @@ OpenTAS64 is a standalone desktop application for creating, editing, and playing
 - Offline editor for N64 controller buttons and analog stick X/Y
 - Interactive analog-stick pad: drag the on-screen stick to set both axes, with live X/Y values and a one-click center control
 - Project editing history with Undo (`Ctrl+Z`) and Redo (`Ctrl+Y`), retaining up to 100 history states
-- Automatic project saving after edits and automatic restoration of the most recently used project at startup
+- Optional automatic project saving after edits (enabled by default) and automatic restoration of the most recently used project at startup
+- Options menu for toggling autosave and switching between the visual analog-stick pad and independent X/Y sliders
 - 120-frame initial timeline with frame selection, insertion, deletion, and append controls to extend the timeline by one or ten frames at a time
 - Timeline capacity of up to 1,000,000 frames per project, with clipped row rendering to keep large timelines responsive
 - Visible Undo and Redo buttons in the Project panel, alongside the Ctrl+Z / Ctrl+Y shortcuts
@@ -40,7 +41,7 @@ The Input Editor uses an interactive circular stick pad instead of separate X/Y 
 
 Project edits are tracked by Undo and Redo history (up to 100 prior states). Use **Ctrl+Z** to undo and **Ctrl+Y** to redo, or use the corresponding entries in the File menu. History is reset when a project is loaded or a new project is created. Undo and redo are unavailable while playback or an input frame is in progress.
 
-Edits are automatically saved after a short idle delay. OpenTAS64 remembers the most recently used project path and restores that project on the next launch. Manual Save and Load remain available. Automatic saving writes to the current project path, so use **Save** or **Save As** as appropriate when creating a separate copy.
+When automatic saving is enabled, edits are saved after a short idle delay and the most recently used project path is restored on the next launch. Autosave can be disabled in the **Options** menu; manual Save and Load remain available, and disabling autosave also prevents the automatic shutdown save. The Options menu also lets you switch between the visual stick pad and separate X/Y sliders. Preferences are stored in `opentas64_settings.ini`. Automatic saving writes to the current project path, so use **Save** or **Save As** as appropriate when creating a separate copy.
 
 ## Synchronization and rewind notes
 

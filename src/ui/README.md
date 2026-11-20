@@ -13,6 +13,7 @@ Implemented UI areas include:
 - Single input-poll step, lockstep playback, and pause controls.
 - **Restart Emulator** and **Rewind to selected** controls.
 - Visible Undo/Redo buttons in the Project panel, plus File-menu and keyboard controls (`Ctrl+Z` / `Ctrl+Y`).
-- Automatic project saving and restoration of the last-used project.
+- Options menu for autosave enable/disable and visual stick pad / X-Y slider selection; preferences persist in `opentas64_settings.ini`.
+- Optional automatic project saving and restoration of the last-used project.
 
 A dedicated docking layout, full menu system, and other planned UI areas are not described as implemented features yet.

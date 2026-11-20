@@ -32,11 +32,11 @@ The acknowledgement confirms that the Mupen64Plus core reached its frame callbac
 
 ## Input editor, project history, and persistence
 
-The Input Editor renders the analog stick as a circular two-dimensional pad. The user drags its handle to set X/Y values; the values are clamped to the controller's supported range and displayed numerically. A center control resets both axes to zero. This is a UI representation only: the underlying project model continues to store the same signed X/Y values per frame.
+The Input Editor can render the analog stick as a circular two-dimensional pad or as separate X/Y sliders. The selection is controlled from the **Options** menu. The visual pad lets the user drag its handle to set X/Y values; both modes clamp values to the controller's supported range and provide a center control. This is a UI preference only: the project model stores the same signed X/Y values per frame.
 
 Project edits are tracked through snapshot-based Undo/Redo history, capped at 100 previous states. A new project or a successfully loaded project establishes a fresh history baseline. Undo and redo are disabled while playback, frame delivery, or reset is active. Keyboard shortcuts are Ctrl+Z and Ctrl+Y, with matching File-menu commands.
 
-After an edit, the project is automatically saved after 750 ms of inactivity when no input frame is in flight. The last used project path is stored in `last_project.txt` and used to restore the project at startup. Manual project loading and saving remain available. The autosave uses the active project path; it does not create versioned backups.
+When enabled in the **Options** menu, autosave writes the project after 750 ms of inactivity when no input frame is in flight. Disabling autosave also disables the automatic shutdown save; manual project saving remains available. The autosave preference and stick-editor mode are stored in `opentas64_settings.ini`. The last used project path is stored in `last_project.txt` and used to restore the project at startup. The autosave uses the active project path; it does not create versioned backups.
 
 ## Restart and rewind
 
