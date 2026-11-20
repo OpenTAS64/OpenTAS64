@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -298,9 +299,55 @@ void App::RenderInputEditor() {
     if (ImGui::Checkbox("C-Up", &c.cUp)) MarkProjectDirty(); if (ImGui::Checkbox("C-Down", &c.cDown)) MarkProjectDirty();
     if (ImGui::Checkbox("C-Left", &c.cLeft)) MarkProjectDirty(); if (ImGui::Checkbox("C-Right", &c.cRight)) MarkProjectDirty();
     ImGui::Columns(1); ImGui::Separator();
-    int x = c.stickX, y = c.stickY;
-    if (ImGui::SliderInt("Stick X", &x, -128, 127)) { c.stickX = static_cast<std::int8_t>(x); MarkProjectDirty(); }
-    if (ImGui::SliderInt("Stick Y", &y, -128, 127)) { c.stickY = static_cast<std::int8_t>(y); MarkProjectDirty(); }
+    ImGui::Text("Analog Stick");
+    const float stickSize = 184.0f;
+    const float stickRadius = 76.0f;
+    const ImVec2 padTopLeft = ImGui::GetCursorScreenPos();
+    ImGui::InvisibleButton("StickPad", ImVec2(stickSize, stickSize));
+    const bool stickPadActive = ImGui::IsItemActive();
+    const ImVec2 padCenter(padTopLeft.x + stickSize * 0.5f,
+                           padTopLeft.y + stickSize * 0.5f);
+    if (stickPadActive && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        const ImVec2 mouse = ImGui::GetIO().MousePos;
+        float dx = (mouse.x - padCenter.x) / stickRadius;
+        float dy = (padCenter.y - mouse.y) / stickRadius;
+        const float length = std::sqrt(dx * dx + dy * dy);
+        if (length > 1.0f) { dx /= length; dy /= length; }
+        const int nextX = std::clamp(static_cast<int>(std::lround(dx * 127.0f)), -128, 127);
+        const int nextY = std::clamp(static_cast<int>(std::lround(dy * 127.0f)), -128, 127);
+        if (c.stickX != nextX || c.stickY != nextY) {
+            c.stickX = static_cast<std::int8_t>(nextX);
+            c.stickY = static_cast<std::int8_t>(nextY);
+            MarkProjectDirty();
+        }
+    }
+    ImDrawList* draw = ImGui::GetWindowDrawList();
+    const ImU32 outerColor = ImGui::GetColorU32(ImGuiCol_Border);
+    const ImU32 axisColor = ImGui::GetColorU32(ImGuiCol_TextDisabled);
+    const ImU32 knobColor = ImGui::GetColorU32(ImGuiCol_ButtonActive);
+    draw->AddCircle(padCenter, stickRadius, outerColor, 64, 2.0f);
+    draw->AddCircle(padCenter, stickRadius * 0.5f, axisColor, 48, 1.0f);
+    draw->AddLine(ImVec2(padCenter.x - stickRadius, padCenter.y),
+                  ImVec2(padCenter.x + stickRadius, padCenter.y), axisColor, 1.0f);
+    draw->AddLine(ImVec2(padCenter.x, padCenter.y - stickRadius),
+                  ImVec2(padCenter.x, padCenter.y + stickRadius), axisColor, 1.0f);
+    const float handleX = padCenter.x + (static_cast<float>(c.stickX) / 127.0f) * stickRadius;
+    const float handleY = padCenter.y - (static_cast<float>(c.stickY) / 127.0f) * stickRadius;
+    draw->AddCircleFilled(ImVec2(handleX, handleY), 10.0f, knobColor, 32);
+    draw->AddCircle(ImVec2(handleX, handleY), 10.0f, outerColor, 32, 1.5f);
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    ImGui::Text("X: %d", static_cast<int>(c.stickX));
+    ImGui::Text("Y: %d", static_cast<int>(c.stickY));
+    ImGui::TextDisabled("Drag the stick\nto set a direction.");
+    if (ImGui::Button("Center stick")) {
+        if (c.stickX != 0 || c.stickY != 0) {
+            c.stickX = 0;
+            c.stickY = 0;
+            MarkProjectDirty();
+        }
+    }
+    ImGui::EndGroup();
     ImGui::Text("Raw stick: (%d, %d)", static_cast<int>(c.stickX), static_cast<int>(c.stickY));
     ImGui::EndDisabled();
 }
