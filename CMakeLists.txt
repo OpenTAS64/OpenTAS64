@@ -52,7 +52,7 @@ if(WIN32)
     endif()
     file(TO_CMAKE_PATH "${OPEN_TAS64_ICON}" OPEN_TAS64_ICON_RC_PATH)
     file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/opentas64.rc"
-        "IDI_ICON1 ICON \"${OPEN_TAS64_ICON_RC_PATH}\"\\n")
+        "IDI_ICON1 ICON \"${OPEN_TAS64_ICON_RC_PATH}\"\n")
     target_sources(OpenTAS64 PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/opentas64.rc")
 endif()
 
