@@ -376,7 +376,7 @@ void App::RenderTimeline() {
         MarkProjectDirty();
     }
     ImGui::EndDisabled();
-    ImGui::SameLine();
+    ImGui::Separator();
     ImGui::BeginDisabled(playback || frameInFlight);
     if (ImGui::Button("Previous") && selected > 0) {
         project.SelectFrame(selected - 1);
@@ -455,7 +455,11 @@ void App::RenderTimeline() {
         ImGui::TableSetupColumn("Stick X", ImGuiTableColumnFlags_WidthFixed, 64.0f);
         ImGui::TableSetupColumn("Stick Y", ImGuiTableColumnFlags_WidthFixed, 64.0f);
         ImGui::TableHeadersRow();
-        for (std::size_t i = 0; i < count; ++i) {
+        ImGuiListClipper clipper;
+        clipper.Begin(static_cast<int>(count));
+        while (clipper.Step()) {
+        for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row) {
+            const std::size_t i = static_cast<std::size_t>(row);
             auto& controller = project.GetFrame(i).controller;
             ImGui::PushID(static_cast<int>(i));
             ImGui::TableNextRow();
@@ -488,6 +492,7 @@ void App::RenderTimeline() {
             }
             ImGui::EndDisabled();
             ImGui::PopID();
+        }
         }
         ImGui::EndTable();
     }

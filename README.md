@@ -17,7 +17,7 @@ OpenTAS64 is a standalone desktop application for creating, editing, and playing
 - Project editing history with Undo (`Ctrl+Z`) and Redo (`Ctrl+Y`), retaining up to 100 history states
 - Automatic project saving after edits and automatic restoration of the most recently used project at startup
 - 120-frame initial timeline with frame selection, insertion, deletion, and append controls to extend the timeline by one or ten frames at a time
-- Timeline capacity of up to 1,000,000 frames per project
+- Timeline capacity of up to 1,000,000 frames per project, with clipped row rendering to keep large timelines responsive
 - Visible Undo and Redo buttons in the Project panel, alongside the Ctrl+Z / Ctrl+Y shortcuts
 - Vertical Piano Roll with button columns and one row per frame
 - Direct editing of button states and analog stick values in the Piano Roll

@@ -7,7 +7,7 @@ Implemented UI areas include:
 - Project creation, loading, and saving.
 - Controller button editor with clickable button controls.
 - Two-dimensional draggable analog-stick pad with live X/Y readout and a center control; the previous independent axis sliders are not used.
-- Frame timeline with previous/next, insert, delete, and append controls (**Add frame** / **Add 10 frames**); projects support up to 1,000,000 frames.
+- Frame timeline with previous/next, insert, delete, and append controls (**Add frame** / **Add 10 frames**); projects support up to 1,000,000 frames. The Piano Roll clips off-screen rows for large projects.
 - Vertical Piano Roll input visualization and editing.
 - Plugin connection status.
 - Single input-poll step, lockstep playback, and pause controls.

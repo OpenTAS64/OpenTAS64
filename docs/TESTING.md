@@ -38,7 +38,7 @@ cmake --build build --config Release --target OpenTAS64MupenInput --parallel 2
 1. Start Mupen64Plus with the OpenTAS64 input plugin selected and a game loaded.
 2. Start OpenTAS64 and connect directly to the plugin. No launcher integration is used.
 3. Confirm a new project starts with 120 editable timeline frames.
-4. Use **Add frame** and **Add 10 frames** to extend the timeline. Confirm the frame count increases, the first newly appended frame is selected, and new frames start with neutral input. Repeat to verify extension remains available as the project grows. Confirm the UI does not extend beyond the 1,000,000-frame project limit.
+4. Use **Add frame** and **Add 10 frames** to extend the timeline. Confirm the frame count increases, the first newly appended frame is selected, and new frames start with neutral input. Repeat to verify extension remains available as the project grows. Confirm the UI does not extend beyond the 1,000,000-frame project limit. Scroll through a long timeline and confirm only visible rows are rendered and scrolling stays responsive.
 5. In the Project panel, use the visible **Undo** and **Redo** buttons. Confirm they match Ctrl+Z and Ctrl+Y and are disabled when no history is available or editing is locked.
 6. Select different timeline rows and confirm the Input Editor follows the selected frame.
 7. Change button values on multiple rows; confirm each row retains its own values when switching frames.
