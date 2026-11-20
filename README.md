@@ -37,7 +37,7 @@ OpenTAS64 is a standalone desktop application for creating, editing, and playing
 
 ## Editing, history, and automatic saving
 
-The Input Editor uses an interactive circular stick pad instead of separate X/Y sliders. Drag the stick handle to set a direction and magnitude; the editor displays the current X/Y values and provides a **Center stick** control. The analog values remain part of the selected frame and can also be edited in the Piano Roll.
+The Input Editor defaults to an interactive circular stick pad. Use the **Options** menu to switch to separate X/Y sliders if preferred. Both modes edit the same analog values for the selected frame, and the stick pad provides a **Center stick** control. Values can also be edited in the Piano Roll.
 
 Project edits are tracked by Undo and Redo history (up to 100 prior states). Use **Ctrl+Z** to undo and **Ctrl+Y** to redo, or use the corresponding entries in the File menu. History is reset when a project is loaded or a new project is created. Undo and redo are unavailable while playback or an input frame is in progress.
 
