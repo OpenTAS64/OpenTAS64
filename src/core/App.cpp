@@ -56,6 +56,7 @@ bool App::Init()
     {
         std::string loadError;
         if (project.LoadFromFile(projectPath, &loadError)) {
+            currentProjectPath = projectPath;
             fileStatus = "Automatically restored " + std::string(projectPath);
             fileStatusOk = true;
         } else {
@@ -279,6 +280,7 @@ void App::SaveProject() {
         std::ofstream recentFile("last_project.txt", std::ios::trunc);
         if (recentFile) recentFile << projectPath << '\n';
         projectDirty = false;
+        currentProjectPath = projectPath;
         const std::time_t savedAt = std::time(nullptr);
         const std::tm* localTime = std::localtime(&savedAt);
         if (localTime) {
@@ -290,6 +292,16 @@ void App::SaveProject() {
         fileStatusOk = true;
     } else { fileStatus = error; fileStatusOk = false; }
 }
+void App::SaveActiveProject() {
+    const std::string requestedPath = projectPath;
+    if (!currentProjectPath.empty()) {
+        std::strncpy(projectPath, currentProjectPath.c_str(), sizeof(projectPath) - 1);
+        projectPath[sizeof(projectPath) - 1] = '\0';
+    }
+    SaveProject();
+    std::strncpy(projectPath, requestedPath.c_str(), sizeof(projectPath) - 1);
+    projectPath[sizeof(projectPath) - 1] = '\0';
+}
 void App::LoadProject() {
     if (frameInFlight) {
         fileStatus = "Wait for the current emulator input frame to be acknowledged before loading.";
@@ -299,6 +311,7 @@ void App::LoadProject() {
     std::string error;
     if (project.LoadFromFile(projectPath, &error)) {
         projectDirty = false;
+        currentProjectPath = projectPath;
         ResetHistory();
         std::ofstream recentFile("last_project.txt", std::ios::trunc);
         if (recentFile) recentFile << projectPath << '\n';
@@ -317,7 +330,7 @@ void App::RequestLoadProject() {
         return;
     }
     if (projectDirty && autosaveEnabled) {
-        SaveProject();
+        SaveActiveProject();
         if (projectDirty) return;
     }
     playback = false;
@@ -335,7 +348,7 @@ void App::RequestNewProject() {
         return;
     }
     if (projectDirty && autosaveEnabled) {
-        SaveProject();
+        SaveActiveProject();
         if (projectDirty) return;
     }
     CreateNewProject();
@@ -706,7 +719,7 @@ void App::Render() {
             ? "Loading another project will discard these changes."
             : "Creating a new project will discard these changes.");
         if (ImGui::Button("Save and continue", ImVec2(150.0f, 0.0f))) {
-            SaveProject();
+            SaveActiveProject();
             if (!projectDirty) {
                 ImGui::CloseCurrentPopup();
                 ContinuePendingProjectAction();
