@@ -41,6 +41,7 @@ std::string DescribeController(const ControllerState& c)
 
 bool App::Init()
 {
+    LoadSettings();
     project.EnsureFrame(119);
     {
         std::ifstream recentFile("last_project.txt");
@@ -99,7 +100,7 @@ void App::HandleEvents() {
     }
 }
 void App::Update() {
-    if (projectDirty && !frameInFlight &&
+    if (autosaveEnabled && projectDirty && !frameInFlight &&
         static_cast<Uint32>(SDL_GetTicks() - lastProjectEditTicks) >= 750) {
         SaveProject();
     }
@@ -243,13 +244,30 @@ void App::Redo() {
     fileStatus = "Redo applied.";
     fileStatusOk = true;
 }
+void App::LoadSettings() {
+    std::ifstream settingsFile("opentas64_settings.ini");
+    std::string line;
+    while (std::getline(settingsFile, line)) {
+        if (line == "autosave=0") autosaveEnabled = false;
+        else if (line == "autosave=1") autosaveEnabled = true;
+        else if (line == "stick_editor=sliders") visualStickEnabled = false;
+        else if (line == "stick_editor=visual") visualStickEnabled = true;
+    }
+}
+void App::SaveSettings() {
+    std::ofstream settingsFile("opentas64_settings.ini", std::ios::trunc);
+    if (settingsFile) {
+        settingsFile << "autosave=" << (autosaveEnabled ? "1" : "0") << '\n';
+        settingsFile << "stick_editor=" << (visualStickEnabled ? "visual" : "sliders") << '\n';
+    }
+}
 void App::SaveProject() {
     std::string error;
     if (project.SaveToFile(projectPath, &error)) {
         std::ofstream recentFile("last_project.txt", std::ios::trunc);
         if (recentFile) recentFile << projectPath << '\n';
         projectDirty = false;
-        fileStatus = "Saved " + std::string(projectPath) + " (automatic save enabled)";
+        fileStatus = "Saved " + std::string(projectPath) + (autosaveEnabled ? " (automatic saving enabled)" : " (automatic saving disabled)");
         fileStatusOk = true;
     } else { fileStatus = error; fileStatusOk = false; }
 }
@@ -302,6 +320,7 @@ void App::RenderInputEditor() {
     if (ImGui::Checkbox("C-Left", &c.cLeft)) MarkProjectDirty(); if (ImGui::Checkbox("C-Right", &c.cRight)) MarkProjectDirty();
     ImGui::Columns(1); ImGui::Separator();
     ImGui::Text("Analog Stick");
+    if (visualStickEnabled) {
     const float stickSize = 184.0f;
     const float stickRadius = 76.0f;
     const ImVec2 padTopLeft = ImGui::GetCursorScreenPos();
@@ -351,6 +370,26 @@ void App::RenderInputEditor() {
     }
     ImGui::EndGroup();
     ImGui::Text("Raw stick: (%d, %d)", static_cast<int>(c.stickX), static_cast<int>(c.stickY));
+    } else {
+        int stickX = c.stickX;
+        int stickY = c.stickY;
+        if (ImGui::SliderInt("Stick X", &stickX, -128, 127)) {
+            c.stickX = static_cast<std::int8_t>(stickX);
+            MarkProjectDirty();
+        }
+        if (ImGui::SliderInt("Stick Y", &stickY, -128, 127)) {
+            c.stickY = static_cast<std::int8_t>(stickY);
+            MarkProjectDirty();
+        }
+        if (ImGui::Button("Center stick")) {
+            if (c.stickX != 0 || c.stickY != 0) {
+                c.stickX = 0;
+                c.stickY = 0;
+                MarkProjectDirty();
+            }
+        }
+        ImGui::Text("Raw stick: (%d, %d)", static_cast<int>(c.stickX), static_cast<int>(c.stickY));
+    }
     ImGui::EndDisabled();
 }
 void App::RenderTimeline() {
@@ -527,6 +566,19 @@ void App::Render() {
             if (ImGui::MenuItem("Exit")) running = false;
             ImGui::EndMenu();
         }
+        if (ImGui::BeginMenu("Options")) {
+            if (ImGui::MenuItem("Automatic saving", nullptr, &autosaveEnabled)) SaveSettings();
+            ImGui::Separator();
+            if (ImGui::MenuItem("Visual stick pad", nullptr, visualStickEnabled, !visualStickEnabled)) {
+                visualStickEnabled = true;
+                SaveSettings();
+            }
+            if (ImGui::MenuItem("Stick X/Y sliders", nullptr, !visualStickEnabled, visualStickEnabled)) {
+                visualStickEnabled = false;
+                SaveSettings();
+            }
+            ImGui::EndMenu();
+        }
         ImGui::EndMainMenuBar();
     }
     if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_S)) SaveProject();
@@ -572,7 +624,7 @@ void App::Render() {
     SDL_RenderPresent(renderer);
 }
 void App::Shutdown() {
-    if (projectDirty) SaveProject();
+    if (autosaveEnabled && projectDirty) SaveProject();
     connection.Disconnect();
     ImGui_ImplSDLRenderer2_Shutdown(); ImGui_ImplSDL2_Shutdown(); ImGui::DestroyContext();
     if (renderer) SDL_DestroyRenderer(renderer);

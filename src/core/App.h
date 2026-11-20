@@ -29,6 +29,8 @@ private:
     void Undo();
     void Redo();
     void ResetHistory();
+    void LoadSettings();
+    void SaveSettings();
 
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
@@ -48,6 +50,8 @@ private:
     std::size_t replayTarget = 0;
     std::uint64_t inFlightFrame = 0;
     bool projectDirty = false;
+    bool autosaveEnabled = true;
+    bool visualStickEnabled = true;
     Uint32 lastProjectEditTicks = 0;
     std::vector<TasProject> undoHistory;
     std::vector<TasProject> redoHistory;
