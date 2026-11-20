@@ -35,6 +35,24 @@ target_link_libraries(OpenTAS64 PRIVATE SDL2::SDL2)
 
 if(WIN32)
     target_link_libraries(OpenTAS64 PRIVATE ws2_32)
+
+    # Give the built .exe the same icon as the SDL application window.
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    set(OPEN_TAS64_ICON "${CMAKE_CURRENT_BINARY_DIR}/opentas64.ico")
+    execute_process(
+        COMMAND "${Python3_EXECUTABLE}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_windows_icon.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/core/AppIcon.h"
+                "${OPEN_TAS64_ICON}"
+        RESULT_VARIABLE ICON_GENERATION_RESULT
+    )
+    if(NOT ICON_GENERATION_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to generate the OpenTAS64 Windows icon.")
+    endif()
+    file(TO_CMAKE_PATH "${OPEN_TAS64_ICON}" OPEN_TAS64_ICON_RC_PATH)
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/opentas64.rc"
+        "IDI_ICON1 ICON \"${OPEN_TAS64_ICON_RC_PATH}\"\\n")
+    target_sources(OpenTAS64 PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/opentas64.rc")
 endif()
 
 add_subdirectory(plugins/mupen64plus-input)
